@@ -341,34 +341,61 @@ export default function App() {
                 disabled={incidentSummary.isPending}
                 onClick={handleGenerateIncidentSummary}
               >
+                <span className="incident-btn__icon">{incidentSummary.isPending ? "⏳" : "📋"}</span>
                 {incidentSummary.isPending ? "Generating report…" : "Generate incident report"}
               </button>
+            </div>
+          )}
+          {incidentSummary.isPending && (
+            <div className="incident-loading">
+              <div className="incident-loading__header">
+                <span className="spinner" aria-hidden="true" />
+                Analyzing {turns.filter(t => t.status === "success").length} queries and generating incident report…
+              </div>
+              <div className="incident-loading__bar" />
             </div>
           )}
           {incidentReport && (
             <div className="incident-report" role="article">
               <div className="incident-report__header">
-                <h2>{incidentReport.title}</h2>
-                <button type="button" className="incident-report__close" onClick={() => setIncidentReport(null)}>×</button>
-              </div>
-              <p className="incident-report__overview">{incidentReport.overview}</p>
-              {incidentReport.keyFindings.length > 0 && (
-                <div className="incident-report__section">
-                  <h3>Key findings</h3>
-                  <ul>{incidentReport.keyFindings.map((f, i) => <li key={i}>{f}</li>)}</ul>
+                <div>
+                  <p className="eyebrow" style={{ marginBottom: "4px" }}>INCIDENT REPORT</p>
+                  <h2>{incidentReport.title}</h2>
                 </div>
-              )}
-              <div className="incident-report__section">
-                <h3>Risk assessment</h3>
-                <p>{incidentReport.riskAssessment}</p>
+                <button type="button" className="incident-report__close" onClick={() => setIncidentReport(null)} aria-label="Close report">×</button>
               </div>
-              {incidentReport.recommendedActions.length > 0 && (
+              <div className="incident-report__body">
+                <p className="incident-report__overview">{incidentReport.overview}</p>
+                {incidentReport.keyFindings.length > 0 && (
+                  <div className="incident-report__section">
+                    <h3>Key findings</h3>
+                    <ul>{incidentReport.keyFindings.map((f, i) => <li key={i}>{f}</li>)}</ul>
+                  </div>
+                )}
                 <div className="incident-report__section">
-                  <h3>Recommended actions</h3>
-                  <ul>{incidentReport.recommendedActions.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                  <h3>Risk assessment</h3>
+                  <p>{incidentReport.riskAssessment}</p>
                 </div>
-              )}
-              <p className="incident-report__meta">Based on {incidentReport.queryCount} queries · {incidentReport.totalRowsAnalyzed} rows analyzed</p>
+                {incidentReport.recommendedActions.length > 0 && (
+                  <div className="incident-report__section">
+                    <h3>Recommended actions</h3>
+                    <ul>{incidentReport.recommendedActions.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                  </div>
+                )}
+              </div>
+              <div className="incident-report__footer">
+                <p className="incident-report__meta">
+                  <span>📊 {incidentReport.queryCount} queries</span>
+                  <span>·</span>
+                  <span>📋 {incidentReport.totalRowsAnalyzed.toLocaleString()} rows analyzed</span>
+                </p>
+                <div className="incident-report__actions">
+                  <button type="button" className="incident-report__action" onClick={() => {
+                    const text = `# ${incidentReport.title}\n\n## Overview\n${incidentReport.overview}\n\n## Key Findings\n${incidentReport.keyFindings.map(f => `- ${f}`).join("\n")}\n\n## Risk Assessment\n${incidentReport.riskAssessment}\n\n## Recommended Actions\n${incidentReport.recommendedActions.map(a => `- ${a}`).join("\n")}`;
+                    navigator.clipboard.writeText(text);
+                  }}>Copy as text</button>
+                </div>
+              </div>
             </div>
           )}
           <ChatInput
