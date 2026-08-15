@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { QUERY_LIBRARY } from "./queryLibrary";
+import { QUERY_LIBRARY, type QueryCategory } from "./libraryData";
 
 interface QueryLibraryProps {
   onAsk: (question: string) => void;
@@ -16,7 +16,7 @@ export function QueryLibrary({ onAsk }: QueryLibraryProps) {
       </div>
       <p className="query-library__hint">Curated questions mapped to your data sources. Click to run.</p>
       <div className="query-library__categories">
-        {QUERY_LIBRARY.map((category) => {
+        {QUERY_LIBRARY.map((category: QueryCategory) => {
           const isOpen = activeCategory === category.name || activeCategory === null;
           return (
             <div key={category.name} className="query-library__category">
