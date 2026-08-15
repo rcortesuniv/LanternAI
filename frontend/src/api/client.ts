@@ -46,9 +46,9 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs ?? REQUEST_TIMEOUT_MS);
   const correlationId = crypto.randomUUID();
 
   try {
@@ -97,7 +97,7 @@ export const api = {
 export const analysisApi = {
   listPromptbooks: () => request<PromptbookSummary[]>("/api/promptbooks"),
   executePromptbook: (id: string) =>
-    request<PromptbookExecutionResult>(`/api/promptbooks/${id}/execute`, { method: "POST" }),
+    request<PromptbookExecutionResult>(`/api/promptbooks/${id}/execute`, { method: "POST" }, 300_000),
   detectAnomalies: (plan: QueryPlan, result: QueryResultData) =>
     request<AnomalyReport>("/api/analyze/anomalies", {
       method: "POST",
@@ -107,5 +107,5 @@ export const analysisApi = {
     request<IncidentSummary>("/api/analyze/incident-summary", {
       method: "POST",
       body: JSON.stringify({ queries }),
-    }),
+    }, 180_000),
 };
