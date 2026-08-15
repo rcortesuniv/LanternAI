@@ -20,13 +20,16 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             _ => (StatusCodes.Status500InternalServerError, "Unexpected error", "An unexpected error occurred. Please try again."),
         };
 
+        var requestPath = httpContext.Request.Path.Value ?? string.Empty;
+        var sanitizedPath = requestPath.Replace("\r", string.Empty).Replace("\n", string.Empty);
+
         if (statusCode == StatusCodes.Status500InternalServerError)
         {
-            logger.LogError(exception, "Unhandled exception on {Path}", httpContext.Request.Path);
+            logger.LogError(exception, "Unhandled exception on {Path}", sanitizedPath);
         }
         else
         {
-            logger.LogWarning(exception, "{Title} on {Path}", title, httpContext.Request.Path);
+            logger.LogWarning(exception, "{Title} on {Path}", title, sanitizedPath);
         }
 
         httpContext.Response.StatusCode = statusCode;
