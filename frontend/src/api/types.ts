@@ -58,6 +58,7 @@ export interface QueryResponse {
   explanation?: QueryExplanation | null;
   metrics?: QueryMetrics | null;
   auditId?: string | null;
+  resultSummary?: string | null;
 }
 
 export interface QueryUsage {
@@ -112,4 +113,14 @@ export interface SystemCapabilities {
   languageModel: { provider: string; model: string };
   sourceCount: number;
   dataSources: Array<{ name: string; kind: string; supportsJoins: boolean; supportsAggregations: boolean; supportsCaching: boolean }>;
+}
+
+/** Request payload for POST /api/query. */
+export interface QueryRequestPayload {
+  question: string;
+  timeRangeHours?: number | null;
+  summarize?: boolean;
+  previousQuestion?: string | null;
+  previousPlan?: QueryPlan | null;
+  previousSummary?: string | null;
 }

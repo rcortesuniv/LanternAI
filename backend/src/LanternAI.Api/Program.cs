@@ -123,6 +123,13 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
+// String enums in JSON (FilterOperator, AggregationFunction) so the frontend can send/receive
+// enum values as readable strings like "NotEquals" instead of numeric codes.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

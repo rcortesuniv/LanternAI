@@ -16,7 +16,7 @@ export function MessageList({ turns, onAsk }: MessageListProps) {
         <div className="empty-state__icon" aria-hidden="true">⌁</div>
         <p className="empty-state__eyebrow">START AN INVESTIGATION</p>
         <p className="empty-state__title">What would you like to investigate?</p>
-        <p className="message-list__empty-hint">Start with a plain-language question. The generated KQL and result set will appear here.</p>
+        <p className="message-list__empty-hint">Start with a plain-language question. The generated KQL and result set will appear here. Ask follow-up questions to drill down.</p>
         <div className="prompt-chips" aria-label="Example questions">
           {["Failed sign-ins in the last 24 hours", "Average request duration by endpoint", "Total latency across app, database, and API dependencies", "Recent critical security events"].map((prompt) => (
             <button key={prompt} type="button" onClick={() => onAsk(prompt)}>{prompt}</button>
@@ -64,6 +64,12 @@ export function MessageList({ turns, onAsk }: MessageListProps) {
                   }}>{copiedTurnId === turn.id ? "Copied" : "Copy KQL"}</button>
                   <button type="button" className="message-action" onClick={() => onAsk(turn.question)}>Run again</button>
                 </div>
+                {turn.response.resultSummary && (
+                  <div className="result-summary" role="note">
+                    <p className="result-summary__icon" aria-hidden="true">💡</p>
+                    <p className="result-summary__text">{turn.response.resultSummary}</p>
+                  </div>
+                )}
                 {turn.response.explanation && (
                   <details className="generated-kql">
                     <summary>Why this query?</summary>

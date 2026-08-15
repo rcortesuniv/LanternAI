@@ -1,11 +1,28 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 
+export interface TimeRangeOption {
+  label: string;
+  hours: number | null;
+}
+
+export const TIME_RANGE_PRESETS: TimeRangeOption[] = [
+  { label: "All time", hours: null },
+  { label: "1h", hours: 1 },
+  { label: "24h", hours: 24 },
+  { label: "7d", hours: 168 },
+  { label: "30d", hours: 720 },
+];
+
 interface ChatInputProps {
   onSubmit: (question: string) => void;
   disabled: boolean;
+  selectedTimeRange: number | null;
+  onTimeRangeChange: (hours: number | null) => void;
+  summarize: boolean;
+  onSummarizeChange: (enabled: boolean) => void;
 }
 
-export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
+export function ChatInput({ onSubmit, disabled, selectedTimeRange, onTimeRangeChange, summarize, onSummarizeChange }: ChatInputProps) {
   const [value, setValue] = useState("");
 
   const submit = () => {
@@ -21,7 +38,6 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter submits, Shift+Enter inserts a newline — standard chat-input convention.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
@@ -30,6 +46,29 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
 
   return (
     <form className="chat-input" onSubmit={handleSubmit}>
+      <div className="chat-input__toolbar">
+        <div className="chat-input__time-range" role="group" aria-label="Time range">
+          {TIME_RANGE_PRESETS.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              className={`time-pill ${selectedTimeRange === preset.hours ? "time-pill--active" : ""}`}
+              onClick={() => onTimeRangeChange(preset.hours)}
+              aria-pressed={selectedTimeRange === preset.hours}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        <label className="chat-input__summarize">
+          <input
+            type="checkbox"
+            checked={summarize}
+            onChange={(e) => onSummarizeChange(e.target.checked)}
+          />
+          <span>Summarize results</span>
+        </label>
+      </div>
       <label htmlFor="chat-question" className="sr-only">
         Ask a question about your event data
       </label>

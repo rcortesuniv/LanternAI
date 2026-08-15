@@ -440,3 +440,81 @@ body {
 .dashboard-alert { border-color: var(--line); background: #102522; }
 .statistics-activity { border-bottom-color: var(--line); }
 .result-table th, .result-table td { border-bottom-color: var(--line); }
+
+/* --- Time range picker pills --- */
+.chat-input__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 8px;
+  flex-wrap: wrap;
+}
+
+.chat-input__time-range {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.time-pill {
+  padding: 3px 10px;
+  border: 1px solid var(--line, #21423c);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft, #9bb0ac);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.time-pill:hover {
+  border-color: var(--green, #5ce0b3);
+  color: var(--green, #5ce0b3);
+}
+
+.time-pill--active {
+  background: var(--green, #5ce0b3);
+  color: #06100f;
+  border-color: var(--green, #5ce0b3);
+  font-weight: 600;
+}
+
+/* --- Summarize toggle --- */
+.chat-input__summarize {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--ink-soft, #9bb0ac);
+  cursor: pointer;
+  user-select: none;
+}
+
+.chat-input__summarize input[type="checkbox"] {
+  accent-color: var(--green, #5ce0b3);
+}
+
+/* --- Result summary --- */
+.result-summary {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  border: 1px solid var(--line, #21423c);
+  border-left: 3px solid var(--green, #5ce0b3);
+  border-radius: 6px;
+  background: rgba(16, 34, 32, 0.7);
+}
+
+.result-summary__icon {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.result-summary__text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink, #d4e8e4);
+}

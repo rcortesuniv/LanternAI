@@ -8,6 +8,7 @@ import { QueryHistoryPanel } from "./components/history/QueryHistoryPanel";
 import { OperatorDashboard } from "./components/dashboard/OperatorDashboard";
 import { UserStatistics } from "./components/statistics/UserStatistics";
 import type { ChatTurn } from "./components/chat/types";
+import type { QueryRequestPayload } from "./api/types";
 
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "clear">("dark");
@@ -16,6 +17,8 @@ export default function App() {
   const [recentQuestions, setRecentQuestions] = useState<string[]>(() => loadQuestions("lantern-recent-queries"));
   const [savedQuestions, setSavedQuestions] = useState<string[]>(() => loadQuestions("lantern-saved-queries"));
   const [liveMessage, setLiveMessage] = useState("");
+  const [selectedTimeRange, setSelectedTimeRange] = useState<number | null>(null);
+  const [summarize, setSummarize] = useState(false);
   const runQuery = useRunQuery();
   const backendHealth = useBackendHealth();
   const modelReadiness = useModelReadiness();
@@ -29,9 +32,24 @@ export default function App() {
     setRecentQuestions((current) => [question, ...current.filter((item) => item !== question)].slice(0, 8));
     const id = crypto.randomUUID();
     setTurns((prev) => [...prev, { id, question, status: "loading" }]);
-    setLiveMessage("Generating query…");
 
-    runQuery.mutate(question, {
+    const loadingMsg = summarize
+      ? "Generating query and summarizing results…"
+      : "Generating query…";
+    setLiveMessage(loadingMsg);
+
+    // Build follow-up context from the last successful turn.
+    const lastSuccess = [...turns].reverse().find((t) => t.status === "success" && t.response);
+    const payload: QueryRequestPayload = {
+      question,
+      timeRangeHours: selectedTimeRange,
+      summarize,
+      previousQuestion: lastSuccess?.question ?? null,
+      previousPlan: lastSuccess?.response?.plan ?? null,
+      previousSummary: lastSuccess?.response?.resultSummary ?? null,
+    };
+
+    runQuery.mutate(payload, {
       onSuccess: (response) => {
         setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, status: "success", response } : t)));
         setLiveMessage(`Query returned ${response.result.rows.length} row${response.result.rows.length === 1 ? "" : "s"}.`);
@@ -126,7 +144,14 @@ export default function App() {
           <div className="chat-panel__messages">
             <MessageList turns={turns} onAsk={handleAsk} />
           </div>
-          <ChatInput onSubmit={handleAsk} disabled={runQuery.isPending || modelReadiness.isError} />
+          <ChatInput
+            onSubmit={handleAsk}
+            disabled={runQuery.isPending || modelReadiness.isError}
+            selectedTimeRange={selectedTimeRange}
+            onTimeRangeChange={setSelectedTimeRange}
+            summarize={summarize}
+            onSummarizeChange={setSummarize}
+          />
         </main>}
       </div>
 

@@ -13,7 +13,8 @@ public sealed record QueryResponse(
     QueryDiagnostics? Diagnostics = null,
     QueryExplanation? Explanation = null,
     QueryMetrics? Metrics = null,
-    string? AuditId = null);
+    string? AuditId = null,
+    string? ResultSummary = null);
 
 public sealed record QueryUsage(int? PromptTokens, int? CompletionTokens, int? TotalTokens);
 
@@ -35,3 +36,9 @@ public sealed record QueryMetrics(
     int CompletionTokens,
     double DurationMs,
     bool CacheHit = false);
+
+/// <summary>Context from the previous turn, enabling follow-up/refinement questions.</summary>
+public sealed record ConversationContext(
+    string PreviousQuestion,
+    QueryPlan? PreviousPlan = null,
+    string? PreviousSummary = null);

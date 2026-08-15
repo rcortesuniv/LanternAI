@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "./client";
+import type { QueryRequestPayload } from "./types";
 
 export function useTables() {
   return useQuery({
@@ -47,6 +48,6 @@ export function useCapabilities() {
 
 export function useRunQuery() {
   return useMutation({
-    mutationFn: (question: string) => api.runQuery(question),
+    mutationFn: (payload: QueryRequestPayload) => api.runQuery(payload),
   });
 }

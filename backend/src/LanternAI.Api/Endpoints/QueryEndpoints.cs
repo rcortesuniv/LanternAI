@@ -1,6 +1,8 @@
 using LanternAI.Api.Infrastructure;
 using LanternAI.Api.Models;
+using LanternAI.Api.Services.Catalog;
 using LanternAI.Api.Services.Execution;
+using LanternAI.Api.Services.Llm;
 using LanternAI.Api.Services.QueryPlanning;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -17,7 +19,17 @@ public static class QueryEndpoints
 
     public static void MapQueryEndpoints(this IEndpointRouteBuilder app, bool requireAuthorization = false)
     {
-        var endpoint = app.MapPost("/api/query", async (QueryRequest request, IQueryPlanService planService, IQueryExecutor executor, QueryCostEstimator costEstimator, IAuditStore auditStore, IMemoryCache cache, ILoggerFactory loggerFactory, HttpContext httpContext, CancellationToken ct) =>
+        var endpoint = app.MapPost("/api/query", async (
+            QueryRequest request,
+            IQueryPlanService planService,
+            IQueryExecutor executor,
+            IEventTableCatalog catalog,
+            QueryCostEstimator costEstimator,
+            IAuditStore auditStore,
+            IMemoryCache cache,
+            ILoggerFactory loggerFactory,
+            HttpContext httpContext,
+            CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request.Question))
             {
@@ -36,7 +48,7 @@ public static class QueryEndpoints
             }
 
             var tenant = httpContext.User.GetTenantContext() ?? new TenantContext("local", "anonymous");
-            var cacheKey = $"query:v1:{tenant.TenantId}:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Question.Trim().ToLowerInvariant())))}";
+            var cacheKey = $"query:v2:{tenant.TenantId}:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Question.Trim().ToLowerInvariant())))}:{request.TimeRangeHours ?? 0}:{request.Summarize}";
             if (cache.TryGetValue(cacheKey, out QueryResponse? cachedResponse) && cachedResponse is not null)
             {
                 return Results.Ok(cachedResponse with
@@ -49,10 +61,57 @@ public static class QueryEndpoints
             var logger = loggerFactory.CreateLogger("LanternAI.QueryAudit");
             var stopwatch = Stopwatch.StartNew();
             logger.LogInformation("Query started with correlation id {CorrelationId}", httpContext.TraceIdentifier);
-            var planned = await planService.BuildPlanWithUsageAsync(request.Question, ct);
+
+            // Build conversation context for follow-up questions.
+            ConversationContext? context = null;
+            if (!string.IsNullOrWhiteSpace(request.PreviousQuestion))
+            {
+                context = new ConversationContext(
+                    request.PreviousQuestion,
+                    request.PreviousPlan,
+                    request.PreviousSummary);
+            }
+
+            var planned = await planService.BuildPlanWithUsageAsync(request.Question, context, ct);
             var plan = planned.Plan;
+
+            // Apply explicit time range override from the time range picker.
+            if (request.TimeRangeHours is { } hours && hours > 0)
+            {
+                if (plan.TimeRange is { } existing)
+                {
+                    plan = plan with { TimeRange = existing with { LookbackHours = hours } };
+                }
+                else
+                {
+                    // LLM didn't include a time range — find the first datetime column on the primary table.
+                    var table = catalog.GetTable(plan.Table);
+                    var datetimeColumn = table?.Columns.FirstOrDefault(c =>
+                        c.KqlType.Equals("datetime", StringComparison.OrdinalIgnoreCase));
+                    if (datetimeColumn is not null)
+                    {
+                        plan = plan with { TimeRange = new QueryTimeRange(datetimeColumn.Name, hours) };
+                    }
+                }
+            }
+
             var result = executor.Execute(plan);
             var generatedKql = KqlRenderer.Render(plan);
+
+            // Generate a natural-language result summary if requested.
+            string? resultSummary = null;
+            if (request.Summarize)
+            {
+                try
+                {
+                    resultSummary = await planService.SummarizeAsync(request.Question, plan, result, ct);
+                }
+                catch (Exception ex) when (ex is LlmUnavailableException)
+                {
+                    logger.LogWarning(ex, "Result summary generation failed for correlation id {CorrelationId}", httpContext.TraceIdentifier);
+                }
+            }
+
             stopwatch.Stop();
             logger.LogInformation("Query completed in {DurationMs} ms across {SourceCount} source(s), returning {RowCount} row(s)", stopwatch.Elapsed.TotalMilliseconds, plan.Tables?.Count ?? 1, result.Rows.Count);
             var auditId = Guid.NewGuid().ToString("N");
@@ -70,7 +129,8 @@ public static class QueryEndpoints
                 new QueryDiagnostics(false, "v1", cost.Tier, cost.EstimatedRowsScanned, cost.EstimatedWorkUnits, cost.Explanation),
                 explanation,
                 metrics,
-                auditId);
+                auditId,
+                resultSummary);
             cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
             return Results.Ok(response);
         })
@@ -120,5 +180,11 @@ public static class QueryEndpoints
             []);
     }
 
-    public sealed record QueryRequest(string Question);
+    public sealed record QueryRequest(
+        string Question,
+        double? TimeRangeHours = null,
+        bool Summarize = false,
+        string? PreviousQuestion = null,
+        QueryPlan? PreviousPlan = null,
+        string? PreviousSummary = null);
 }

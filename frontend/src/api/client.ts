@@ -1,4 +1,4 @@
-import type { HealthStatus, ProblemDetails, QueryResponse, SystemCapabilities, TableSchema } from "./types";
+import type { HealthStatus, ProblemDetails, QueryResponse, QueryRequestPayload, SystemCapabilities, TableSchema } from "./types";
 
 /**
  * In GitHub Codespaces (and VS Code's forwarded-port URLs generally), the
@@ -87,9 +87,9 @@ export const api = {
   /** Readiness — verifies the Ollama endpoint is reachable and the model is available. */
   checkReadiness: () => request<HealthStatus>("/health/ready").then(() => ({ ok: true })),
   getCapabilities: () => request<SystemCapabilities>("/api/capabilities"),
-  runQuery: (question: string) =>
+  runQuery: (payload: QueryRequestPayload) =>
     request<QueryResponse>("/api/query", {
       method: "POST",
-      body: JSON.stringify({ question }),
+      body: JSON.stringify(payload),
     }),
 };
