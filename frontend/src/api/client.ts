@@ -74,7 +74,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   listTables: () => request<TableSchema[]>("/api/tables"),
-  checkHealth: () => request<HealthStatus>("/health/ready").then(() => ({ ok: true })),
+  checkHealth: () => request<HealthStatus>("/health/live").then(() => ({ ok: true })),
+  checkReadiness: () => request<HealthStatus>("/health/ready").then(() => ({ ok: true })),
   getCapabilities: () => request<SystemCapabilities>("/api/capabilities"),
   runQuery: (question: string) =>
     request<QueryResponse>("/api/query", {

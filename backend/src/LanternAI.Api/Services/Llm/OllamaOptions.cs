@@ -13,6 +13,9 @@ public sealed class OllamaOptions
 
     public string Model { get; set; } = "qwen2.5-coder";
 
+    /// <summary>Optional bearer token for Ollama Cloud.</summary>
+    public string ApiKey { get; set; } = "";
+
     /// <summary>Request timeout; local model inference can be slow on first load.</summary>
     public int TimeoutSeconds { get; set; } = 60;
 }
