@@ -1059,3 +1059,45 @@ body {
 .app-shell:not(.app-shell--clear) .incident-loading__bar { background: linear-gradient(90deg, #123b35 0%, var(--green) 50%, #123b35 100%); background-size: 200% 100%; }
 .app-shell:not(.app-shell--clear) .incident-btn { border-color: #2b514a; background: linear-gradient(135deg, rgba(92, 224, 179, 0.06), rgba(92, 224, 179, 0.02)); color: var(--green); }
 .app-shell:not(.app-shell--clear) .incident-btn:hover:not(:disabled) { background: var(--green); color: #06100f; }
+
+/* --- Incident report modal overlay --- */
+.incident-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.incident-modal {
+  max-width: 780px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* In modal context, the report fills the modal */
+.incident-modal .incident-report {
+  margin: 0;
+  max-width: none;
+  border-radius: 16px;
+}
+
+/* Dark mode overlay */
+.app-shell:not(.app-shell--clear) .incident-modal-overlay {
+  background: rgba(8, 20, 19, 0.8);
+}

@@ -356,69 +356,73 @@ export default function App() {
             </div>
           )}
           {incidentReport && (
-            <div className="incident-report" role="article">
-              <div className="incident-report__header">
-                <div className="incident-report__header-left">
-                  <div className="incident-report__icon">📋</div>
-                  <div>
-                    <p className="incident-report__label">INCIDENT REPORT</p>
-                    <h2>{incidentReport.title}</h2>
+            <div className="incident-modal-overlay" onClick={() => setIncidentReport(null)} role="dialog" aria-modal="true" aria-label="Incident report">
+              <div className="incident-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="incident-report" role="article">
+                  <div className="incident-report__header">
+                    <div className="incident-report__header-left">
+                      <div className="incident-report__icon">📋</div>
+                      <div>
+                        <p className="incident-report__label">INCIDENT REPORT</p>
+                        <h2>{incidentReport.title}</h2>
+                      </div>
+                    </div>
+                    <button type="button" className="incident-report__close" onClick={() => setIncidentReport(null)} aria-label="Close report">×</button>
                   </div>
-                </div>
-                <button type="button" className="incident-report__close" onClick={() => setIncidentReport(null)} aria-label="Close report">×</button>
-              </div>
-              <div className="incident-report__body">
-                <div className="incident-report__overview">
-                  <div className="incident-report__overview-icon">📝</div>
-                  <p>{incidentReport.overview}</p>
-                </div>
-                {incidentReport.keyFindings.length > 0 && (
-                  <div className="incident-report__section incident-report__section--findings">
-                    <h3><span className="incident-report__section-icon">🔍</span> Key findings</h3>
-                    <ul>
-                      {incidentReport.keyFindings.map((f, i) => (
-                        <li key={i}><span className="incident-report__bullet">{i + 1}</span><span>{f}</span></li>
-                      ))}
-                    </ul>
+                  <div className="incident-report__body">
+                    <div className="incident-report__overview">
+                      <div className="incident-report__overview-icon">📝</div>
+                      <p>{incidentReport.overview}</p>
+                    </div>
+                    {incidentReport.keyFindings.length > 0 && (
+                      <div className="incident-report__section incident-report__section--findings">
+                        <h3><span className="incident-report__section-icon">🔍</span> Key findings</h3>
+                        <ul>
+                          {incidentReport.keyFindings.map((f, i) => (
+                            <li key={i}><span className="incident-report__bullet">{i + 1}</span><span>{f}</span></li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="incident-report__section incident-report__section--risk">
+                      <h3><span className="incident-report__section-icon">⚠️</span> Risk assessment</h3>
+                      <div className="incident-report__risk-badge">{incidentReport.riskAssessment.split(";")[0]}</div>
+                      <p>{incidentReport.riskAssessment}</p>
+                    </div>
+                    {incidentReport.recommendedActions.length > 0 && (
+                      <div className="incident-report__section incident-report__section--actions">
+                        <h3><span className="incident-report__section-icon">✅</span> Recommended actions</h3>
+                        <ul>
+                          {incidentReport.recommendedActions.map((a, i) => (
+                            <li key={i}><span className="incident-report__bullet incident-report__bullet--action">{i + 1}</span><span>{a}</span></li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="incident-report__section incident-report__section--risk">
-                  <h3><span className="incident-report__section-icon">⚠️</span> Risk assessment</h3>
-                  <div className="incident-report__risk-badge">{incidentReport.riskAssessment.split(";")[0]}</div>
-                  <p>{incidentReport.riskAssessment}</p>
-                </div>
-                {incidentReport.recommendedActions.length > 0 && (
-                  <div className="incident-report__section incident-report__section--actions">
-                    <h3><span className="incident-report__section-icon">✅</span> Recommended actions</h3>
-                    <ul>
-                      {incidentReport.recommendedActions.map((a, i) => (
-                        <li key={i}><span className="incident-report__bullet incident-report__bullet--action">{i + 1}</span><span>{a}</span></li>
-                      ))}
-                    </ul>
+                  <div className="incident-report__footer">
+                    <div className="incident-report__meta">
+                      <span className="incident-report__meta-item">📊 {incidentReport.queryCount} queries</span>
+                      <span className="incident-report__meta-sep">·</span>
+                      <span className="incident-report__meta-item">📋 {incidentReport.totalRowsAnalyzed.toLocaleString()} rows analyzed</span>
+                    </div>
+                    <div className="incident-report__actions">
+                      <button type="button" className="incident-report__action" onClick={() => {
+                        const text = `# ${incidentReport.title}\n\n## Overview\n${incidentReport.overview}\n\n## Key Findings\n${incidentReport.keyFindings.map(f => `- ${f}`).join("\n")}\n\n## Risk Assessment\n${incidentReport.riskAssessment}\n\n## Recommended Actions\n${incidentReport.recommendedActions.map(a => `- ${a}`).join("\n")}`;
+                        navigator.clipboard.writeText(text);
+                      }}>Copy</button>
+                      <button type="button" className="incident-report__action" onClick={() => {
+                        const md = `# ${incidentReport.title}\n\n## Overview\n${incidentReport.overview}\n\n## Key Findings\n${incidentReport.keyFindings.map(f => `- ${f}`).join("\n")}\n\n## Risk Assessment\n${incidentReport.riskAssessment}\n\n## Recommended Actions\n${incidentReport.recommendedActions.map(a => `- ${a}`).join("\n")}`;
+                        const blob = new Blob([md], { type: "text/markdown" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = `incident-report-${new Date().toISOString().slice(0, 10)}.md`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                      }}>Download</button>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="incident-report__footer">
-                <div className="incident-report__meta">
-                  <span className="incident-report__meta-item">📊 {incidentReport.queryCount} queries</span>
-                  <span className="incident-report__meta-sep">·</span>
-                  <span className="incident-report__meta-item">📋 {incidentReport.totalRowsAnalyzed.toLocaleString()} rows analyzed</span>
-                </div>
-                <div className="incident-report__actions">
-                  <button type="button" className="incident-report__action" onClick={() => {
-                    const text = `# ${incidentReport.title}\n\n## Overview\n${incidentReport.overview}\n\n## Key Findings\n${incidentReport.keyFindings.map(f => `- ${f}`).join("\n")}\n\n## Risk Assessment\n${incidentReport.riskAssessment}\n\n## Recommended Actions\n${incidentReport.recommendedActions.map(a => `- ${a}`).join("\n")}`;
-                    navigator.clipboard.writeText(text);
-                  }}>Copy</button>
-                  <button type="button" className="incident-report__action" onClick={() => {
-                    const md = `# ${incidentReport.title}\n\n## Overview\n${incidentReport.overview}\n\n## Key Findings\n${incidentReport.keyFindings.map(f => `- ${f}`).join("\n")}\n\n## Risk Assessment\n${incidentReport.riskAssessment}\n\n## Recommended Actions\n${incidentReport.recommendedActions.map(a => `- ${a}`).join("\n")}`;
-                    const blob = new Blob([md], { type: "text/markdown" });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = `incident-report-${new Date().toISOString().slice(0, 10)}.md`;
-                    link.click();
-                    URL.revokeObjectURL(url);
-                  }}>Download</button>
                 </div>
               </div>
             </div>
