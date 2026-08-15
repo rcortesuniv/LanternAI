@@ -11,7 +11,7 @@ public sealed class OllamaOptions
 
     public string BaseUrl { get; set; } = "https://ollama.com";
 
-    public string Model { get; set; } = "qwen3-coder:480b";
+    public string Model { get; set; } = "qwen3.5:397b";
 
     /// <summary>Optional bearer token for Ollama Cloud.</summary>
     public string ApiKey { get; set; } = "";

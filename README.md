@@ -40,7 +40,7 @@ docs/           Security & architecture notes
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Node.js 20+](https://nodejs.org/)
 - An [Ollama Cloud](https://ollama.com) API key with access to the configured
-  `qwen3-coder:480b` model.
+  `qwen3.5:397b` model.
 
 ## Running locally (without Docker)
 
@@ -127,7 +127,7 @@ ranges, limits).
 | Variable                            | Default                     | Purpose                                                                 |
 |-------------------------------------|------------------------------|--------------------------------------------------------------------------|
 | `Ollama__BaseUrl`                   | `https://ollama.com`        | Ollama Cloud server address                                               |
-| `Ollama__Model`                     | `qwen3-coder:480b`          | Model used for NL → query-plan generation                                |
+| `Ollama__Model`                     | `qwen3.5:397b`              | Model used for NL → query-plan generation                                |
 | `Ollama__ApiKey`                    | *(required)*                | Ollama Cloud bearer token; keep it out of source control                  |
 | `Cors__AllowedOrigins__0`           | `http://localhost:5173`     | Frontend origin allowed to call the API (exact match)                    |
 | `Cors__AllowedOriginSuffixes__0`    | `.app.github.dev`           | Additional HTTPS origin suffixes allowed (Codespaces forwarded ports)    |
