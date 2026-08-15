@@ -158,7 +158,7 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         {
             throw new InvalidQueryPlanException($"Unknown filter operator '{filter.Operator}'.");
         }
-        return new QueryFilter(column, op, filter.Value);
+        return new QueryFilter(column, op, ScalarValueToString(filter.Value));
     }
 
     private static QueryFilter ValidateFilter(TableSchema table, RawFilter filter)
@@ -169,8 +169,15 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         {
             throw new InvalidQueryPlanException($"Unknown filter operator '{filter.Operator}'.");
         }
-        return new QueryFilter(column.Name, op, filter.Value);
+        return new QueryFilter(column.Name, op, ScalarValueToString(filter.Value));
     }
+
+    private static string ScalarValueToString(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString() ?? "",
+        JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False => value.ToString(),
+        _ => throw new InvalidQueryPlanException("Filter values must be strings, numbers, or booleans."),
+    };
 
     private static QueryTimeRange ValidateTimeRange(TableSchema table, RawTimeRange timeRange)
     {
@@ -237,7 +244,7 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         RawAggregation? Aggregation,
         int? Limit);
 
-    private sealed record RawFilter(string Column, string Operator, string Value);
+    private sealed record RawFilter(string Column, string Operator, JsonElement Value);
 
     private sealed record RawTimeRange(string Column, double LookbackHours);
 

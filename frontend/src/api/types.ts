@@ -55,6 +55,9 @@ export interface QueryResponse {
   result: QueryResultData;
   usage?: QueryUsage | null;
   diagnostics?: QueryDiagnostics | null;
+  explanation?: QueryExplanation | null;
+  metrics?: QueryMetrics | null;
+  auditId?: string | null;
 }
 
 export interface QueryUsage {
@@ -70,6 +73,25 @@ export interface QueryDiagnostics {
   estimatedRowsScanned: number;
   estimatedWorkUnits: number;
   costExplanation: string;
+}
+
+export interface QueryExplanation {
+  summary: string;
+  reasons: string[];
+  confidence: string;
+  warnings: string[];
+  unresolvedAmbiguities: string[];
+}
+
+export interface QueryMetrics {
+  costTier: string;
+  estimatedRowsScanned: number;
+  estimatedWorkUnits: number;
+  resultRowCount: number;
+  promptTokens: number;
+  completionTokens: number;
+  durationMs: number;
+  cacheHit: boolean;
 }
 
 export interface ProblemDetails {

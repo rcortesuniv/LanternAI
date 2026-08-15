@@ -14,7 +14,7 @@ for _ in $(seq 1 30); do
 done
 
 echo "==> Pulling qwen2.5-coder model (first time only; can take a few minutes)..."
-ollama pull qwen2.5-coder
+ollama pull qwen2.5-coder:1.5b
 
 echo "==> Restoring backend dependencies..."
 (cd backend && dotnet restore)
