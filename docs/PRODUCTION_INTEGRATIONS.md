@@ -1,24 +1,22 @@
 # Production integration contracts
 
-Lantern currently runs safely against simulated data and local Ollama. The
+Lantern currently runs safely against simulated data and Ollama Cloud. The
 following configuration contracts expose the next production seams without
 claiming that external access is enabled:
 
 ## Ollama Cloud
 
-The Ollama provider supports both local Ollama and Ollama Cloud. Keep the API
-key out of source control and configure cloud mode through environment
-variables:
+The backend uses Ollama Cloud by default. Supply the bearer token through the
+environment and never commit it:
 
 ```bash
-export Ollama__BaseUrl=https://ollama.com
-export Ollama__Model=qwen2.5-coder:1.5b
-export Ollama__ApiKey=<your-rotated-key>
-dotnet run --project backend/src/LanternAI.Api --urls http://localhost:5020
+read -s OLLAMA_API_KEY
+export Ollama__ApiKey="$OLLAMA_API_KEY"
+unset OLLAMA_API_KEY
 ```
 
-`Ollama__ApiKey` is sent as a bearer token to the chat and readiness endpoints.
-If it is omitted, the provider uses unauthenticated local Ollama.
+Override `Ollama__BaseUrl` or `Ollama__Model` through environment variables if
+your account uses a different Cloud endpoint or model.
 
 ## Entra ID
 

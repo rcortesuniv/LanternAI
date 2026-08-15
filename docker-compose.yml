@@ -1,23 +1,6 @@
 name: lantern-ai
 
 services:
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    command: >
-      sh -lc "ollama serve &
-      sleep 8
-      ollama pull qwen2.5-coder:1.5b
-      wait"
-    healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q 'qwen2.5-coder:1.5b' || exit 1"]
-      interval: 10s
-      timeout: 15s
-      retries: 12
-
   backend:
     build:
       context: ./backend
@@ -25,12 +8,10 @@ services:
       - "5020:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Ollama__BaseUrl: http://ollama:11434
-      Ollama__Model: qwen2.5-coder:1.5b
+      Ollama__BaseUrl: https://ollama.com
+      Ollama__Model: qwen3-coder:480b
+      Ollama__ApiKey: ${OLLAMA_API_KEY:?Set OLLAMA_API_KEY before starting Docker Compose}
       Cors__AllowedOrigins__0: http://localhost:5173
-    depends_on:
-      ollama:
-        condition: service_healthy
 
   # Dev-mode frontend container (Vite dev server with hot reload). The
   # browser runs on the host, so VITE_API_BASE_URL points at the
@@ -50,5 +31,4 @@ services:
       - backend
 
 volumes:
-  ollama-data:
   frontend-node-modules:

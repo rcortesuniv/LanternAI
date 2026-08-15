@@ -39,16 +39,16 @@ docs/           Security & architecture notes
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Node.js 20+](https://nodejs.org/)
-- [Ollama](https://ollama.com/download), running locally, with a
-  code-capable model pulled:
-  ```
-  ollama pull qwen2.5-coder
-  ```
+- An [Ollama Cloud](https://ollama.com) API key with access to the configured
+  `qwen3-coder:480b` model.
 
 ## Running locally (without Docker)
 
 ```bash
 # Terminal 1 — backend (defaults to http://localhost:5020)
+read -s OLLAMA_API_KEY
+export Ollama__ApiKey="$OLLAMA_API_KEY"
+unset OLLAMA_API_KEY
 cd backend
 dotnet run --project src/LanternAI.Api --urls http://localhost:5020
 
@@ -59,21 +59,21 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. Ollama is expected at
-`http://localhost:11434` by default — override with the `Ollama__BaseUrl` /
-`Ollama__Model` environment variables (or `backend/src/LanternAI.Api/appsettings.json`)
-if yours runs elsewhere or you want a different model.
+Then open http://localhost:5173. The backend uses Ollama Cloud by default. Set
+`Ollama__BaseUrl`, `Ollama__Model`, and `Ollama__ApiKey` through environment
+variables for a different Cloud model or endpoint. Never commit the API key.
 
 ## Running with Docker Compose
 
 ```bash
 docker compose up
-# then, in another terminal, pull the model into the ollama container once:
-docker compose exec ollama ollama pull qwen2.5-coder
+# provide the Cloud token to Compose; it is not stored in the repository:
+export OLLAMA_API_KEY="<rotated-token>"
+docker compose up
 ```
 
-This starts Ollama, the backend API (`:5020`), and a Vite dev server for the
-frontend (`:5173`) with hot reload.
+This starts the backend API (`:5020`) and a Vite dev server for the frontend
+(`:5173`) with hot reload. The backend calls Ollama Cloud directly.
 
 ## Running in GitHub Codespaces / a Dev Container
 
@@ -82,11 +82,7 @@ The repo includes a `.devcontainer` config, so **Create codespace on main**
 file) gives you a fully set-up environment with no manual install steps:
 
 - .NET 8 SDK and Node.js 20 preinstalled in the container image.
-- Ollama installed, started, and `qwen2.5-coder` pulled automatically via
-  `postCreateCommand` (`.devcontainer/post-create.sh`) — first-time setup
-  takes a few minutes while the model downloads.
-- Ports `5020` (API), `5173` (web), and `11434` (Ollama) are pre-labeled for
-  auto-forwarding.
+- Ports `5020` (API) and `5173` (web) are pre-labeled for auto-forwarding.
 - Docker is available inside the container too (`docker-in-docker` feature),
   so `docker compose up` also works here if you'd rather use that path
   instead of the steps below.
@@ -95,10 +91,13 @@ file) gives you a fully set-up environment with no manual install steps:
   backend's forwarded URL automatically, and the backend's CORS policy
   already allows `*.app.github.dev` / `*.github.dev` origins.
 
-Once the Codespace finishes setting up:
+Once the Codespace finishes setting up, provide `Ollama__ApiKey` in the backend
+terminal, then start the services:
 
 ```bash
-# Terminal 1
+read -s OLLAMA_API_KEY
+export Ollama__ApiKey="$OLLAMA_API_KEY"
+unset OLLAMA_API_KEY
 cd backend && dotnet run --project src/LanternAI.Api --urls http://localhost:5020
 
 # Terminal 2
@@ -127,8 +126,9 @@ ranges, limits).
 
 | Variable                            | Default                     | Purpose                                                                 |
 |-------------------------------------|------------------------------|--------------------------------------------------------------------------|
-| `Ollama__BaseUrl`                   | `http://localhost:11434`    | Ollama server address                                                     |
-| `Ollama__Model`                     | `qwen2.5-coder`              | Model used for NL → query-plan generation                                |
+| `Ollama__BaseUrl`                   | `https://ollama.com`        | Ollama Cloud server address                                               |
+| `Ollama__Model`                     | `qwen3-coder:480b`          | Model used for NL → query-plan generation                                |
+| `Ollama__ApiKey`                    | *(required)*                | Ollama Cloud bearer token; keep it out of source control                  |
 | `Cors__AllowedOrigins__0`           | `http://localhost:5173`     | Frontend origin allowed to call the API (exact match)                    |
 | `Cors__AllowedOriginSuffixes__0`    | `.app.github.dev`           | Additional HTTPS origin suffixes allowed (Codespaces forwarded ports)    |
 | `VITE_API_BASE_URL` (frontend)      | auto-detected, else `http://localhost:5020` | Backend base URL the UI calls — only needed if auto-detection doesn't apply to your setup |
