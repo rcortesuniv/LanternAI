@@ -5,19 +5,20 @@ using System.Text.Json;
 
 namespace LanternAI.Api.Infrastructure;
 
+/// <summary>
+/// Probes the Ollama endpoint (local or cloud) via api/tags. Uses a named
+/// HttpClient ("ollama-health") configured in Program.cs so BaseAddress,
+/// auth headers, and timeout stay in sync with the typed LLM client.
+/// </summary>
 public sealed class OllamaHealthCheck(IHttpClientFactory httpClientFactory, IOptions<OllamaOptions> options) : IHealthCheck
 {
+    private const string HttpClientName = "ollama-health";
+
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
-            using var client = httpClientFactory.CreateClient();
-            client.BaseAddress = new Uri(options.Value.BaseUrl);
-            if (!string.IsNullOrWhiteSpace(options.Value.ApiKey))
-            {
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.Value.ApiKey);
-            }
-            client.Timeout = TimeSpan.FromSeconds(3);
+            var client = httpClientFactory.CreateClient(HttpClientName);
             using var response = await client.GetAsync("api/tags", cancellationToken);
             if (!response.IsSuccessStatusCode)
             {

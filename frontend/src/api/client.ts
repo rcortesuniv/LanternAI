@@ -25,6 +25,14 @@ function resolveApiBaseUrl(): string {
 
 const BASE_URL = resolveApiBaseUrl();
 
+/**
+ * Request timeout — aligned with the backend's Ollama:TimeoutSeconds (120s)
+ * plus a small buffer. Cloud LLM inference can take 10–20s on a cold model,
+ * so the old 75s ceiling could prematurely abort legitimate queries.
+ * Override via VITE_API_TIMEOUT_MS if needed.
+ */
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS) || 130_000;
+
 /** Error carrying the backend's ProblemDetails so the UI can show a specific, non-leaky message. */
 export class ApiError extends Error {
   status: number;
@@ -40,7 +48,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 75_000);
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const correlationId = crypto.randomUUID();
 
   try {
@@ -64,7 +72,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return (await response.json()) as T;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new ApiError("The request timed out. The local model may still be warming up.", 408, correlationId);
+      throw new ApiError("The request timed out. The model may still be processing — try again in a moment.", 408, correlationId);
     }
     throw error;
   } finally {
@@ -74,7 +82,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   listTables: () => request<TableSchema[]>("/api/tables"),
+  /** Liveness — verifies the process is running and can serve HTTP. */
   checkHealth: () => request<HealthStatus>("/health/live").then(() => ({ ok: true })),
+  /** Readiness — verifies the Ollama endpoint is reachable and the model is available. */
   checkReadiness: () => request<HealthStatus>("/health/ready").then(() => ({ ok: true })),
   getCapabilities: () => request<SystemCapabilities>("/api/capabilities"),
   runQuery: (question: string) =>

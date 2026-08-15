@@ -8,12 +8,12 @@ namespace LanternAI.Api.Tests;
 
 public class OllamaHealthCheckTests
 {
-    private static IOptions<OllamaOptions> CreateOptions(string model) =>
-        Options.Create(new OllamaOptions { BaseUrl = "http://localhost:11434", Model = model });
+    private static IOptions<OllamaOptions> CreateOptions(string model, string baseUrl = "http://localhost:11434") =>
+        Options.Create(new OllamaOptions { BaseUrl = baseUrl, Model = model });
 
     private static IHttpClientFactory CreateFactory(HttpMessageHandler handler)
     {
-        var client = new HttpClient(handler) { BaseAddress = null };
+        var client = new HttpClient(handler);
         var factory = new FakeHttpClientFactory(client);
         return factory;
     }
@@ -111,6 +111,31 @@ public class OllamaHealthCheckTests
         var result = await check.CheckHealthAsync(CreateContext());
 
         Assert.Equal(HealthStatus.Unhealthy, result.Status);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_CloudModelPresentInTags_ReturnsHealthy()
+    {
+        // Ollama Cloud api/tags lists cloud models (e.g. qwen3.5:397b).
+        var json = """{"models":[{"name":"qwen3.5:397b"}]}""";
+        var factory = CreateFactory(new FakeHttpMessageHandler(json));
+        var check = new OllamaHealthCheck(factory, CreateOptions("qwen3.5:397b", "https://ollama.com"));
+
+        var result = await check.CheckHealthAsync(CreateContext());
+
+        Assert.Equal(HealthStatus.Healthy, result.Status);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_CloudReturnsUnauthorized_ReturnsUnhealthy()
+    {
+        var factory = CreateFactory(new FakeHttpMessageHandler("Unauthorized", System.Net.HttpStatusCode.Unauthorized));
+        var check = new OllamaHealthCheck(factory, CreateOptions("qwen3.5:397b", "https://ollama.com"));
+
+        var result = await check.CheckHealthAsync(CreateContext());
+
+        Assert.Equal(HealthStatus.Unhealthy, result.Status);
+        Assert.Contains("401", result.Description);
     }
 
     private sealed class ThrowingHttpMessageHandler(Exception exception) : HttpMessageHandler

@@ -18,4 +18,7 @@ public sealed class OllamaOptions
 
     /// <summary>Request timeout; cloud inference can be slow on first call.</summary>
     public int TimeoutSeconds { get; set; } = 120;
+
+    /// <summary>Health-check probe timeout. Defaults to 10s for cloud latency headroom.</summary>
+    public int HealthTimeoutSeconds { get; set; } = 10;
 }

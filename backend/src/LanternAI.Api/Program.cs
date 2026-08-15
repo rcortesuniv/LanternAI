@@ -17,6 +17,7 @@ builder.Services.AddOptions<OllamaOptions>()
     .Validate(options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https", "Ollama:BaseUrl must be an absolute HTTP(S) URL.")
     .Validate(options => !string.IsNullOrWhiteSpace(options.Model), "Ollama:Model is required.")
     .Validate(options => options.TimeoutSeconds is >= 1 and <= 300, "Ollama:TimeoutSeconds must be between 1 and 300.")
+    .Validate(options => options.HealthTimeoutSeconds is >= 1 and <= 60, "Ollama:HealthTimeoutSeconds must be between 1 and 60.")
     .ValidateOnStart();
 builder.Services.AddOptions<SecurityOptions>()
     .Bind(builder.Configuration.GetSection(SecurityOptions.SectionName))
@@ -62,6 +63,20 @@ builder.Services.AddHttpClient<ILlmProvider, OllamaLlmProvider>((sp, client) =>
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
     }
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
+
+// Named HttpClient for the health check — shares BaseAddress and auth header
+// with the typed LLM client but uses a shorter timeout (HealthTimeoutSeconds).
+// This avoids duplicating config logic in OllamaHealthCheck itself.
+builder.Services.AddHttpClient("ollama-health", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    if (!string.IsNullOrWhiteSpace(options.ApiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
+    }
+    client.Timeout = TimeSpan.FromSeconds(options.HealthTimeoutSeconds);
 });
 
 // --- Error handling --------------------------------------------------------
