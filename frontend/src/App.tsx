@@ -260,30 +260,69 @@ export default function App() {
             </div>
           )}
           {promptbookResult && (
-            <div className="promptbook-results">
-              <h2>Results: {promptbookResult.promptbookName}</h2>
-              <p className="promptbook-results__meta">
-                {promptbookResult.steps.filter(s => !s.skipped).length} steps executed ·
-                {" "}{Math.round(promptbookResult.totalDurationMs / 1000)}s ·
-                {" ~"}{promptbookResult.totalTokens} tokens
-              </p>
-              {promptbookResult.steps.map((step) => (
-                <div key={step.stepIndex} className={`promptbook-step-result ${step.skipped ? "is-skipped" : ""}`}>
-                  <div className="promptbook-step-result__header">
-                    <span className="promptbook-step__num">{step.stepIndex + 1}</span>
-                    <span className="promptbook-step-result__q">{step.question}</span>
-                    {step.skipped && <span className="promptbook-step-result__skipped">Skipped</span>}
-                    {!step.skipped && <span className="promptbook-step-result__rows">{step.rowCount} rows</span>}
+            <div className="incident-modal-overlay" onClick={() => setPromptbookResult(null)} role="dialog" aria-modal="true" aria-label="Promptbook results">
+              <div className="incident-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="incident-report" role="article">
+                  <div className="incident-report__header">
+                    <div className="incident-report__header-left">
+                      <div className="incident-report__icon">🔍</div>
+                      <div>
+                        <p className="incident-report__label">PROMPTBOOK RESULTS</p>
+                        <h2>{promptbookResult.promptbookName}</h2>
+                      </div>
+                    </div>
+                    <button type="button" className="incident-report__close" onClick={() => setPromptbookResult(null)} aria-label="Close">×</button>
                   </div>
-                  {step.summary && <p className="promptbook-step-result__summary">{step.summary}</p>}
-                  {step.generatedKql && (
-                    <details className="generated-kql">
-                      <summary>View KQL</summary>
-                      <pre><code>{step.generatedKql}</code></pre>
-                    </details>
-                  )}
+                  <div className="incident-report__body">
+                    <div className="incident-report__overview">
+                      <div className="incident-report__overview-icon">📊</div>
+                      <p>{promptbookResult.steps.filter(s => !s.skipped).length} steps executed in {Math.round(promptbookResult.totalDurationMs / 1000)}s · ~{promptbookResult.totalTokens} tokens used</p>
+                    </div>
+                    <div className="incident-report__section incident-report__section--findings">
+                      <h3><span className="incident-report__section-icon">📋</span> Investigation steps</h3>
+                      <ul>
+                        {promptbookResult.steps.map((step) => (
+                          <li key={step.stepIndex} className={step.skipped ? "is-skipped" : ""} style={{ opacity: step.skipped ? 0.4 : 1 }}>
+                            <span className="incident-report__bullet">{step.stepIndex + 1}</span>
+                            <span>
+                              <strong>{step.question}</strong>
+                              {step.skipped ? (
+                                <div className="promptbook-step-result__skipped">Skipped — insufficient data from previous step</div>
+                              ) : (
+                                <>
+                                  <div style={{ marginTop: "4px", fontSize: "0.82rem", color: "var(--green-dark, #0c806b)" }}>{step.rowCount} rows returned</div>
+                                  {step.summary && <p style={{ margin: "8px 0 0", fontSize: "0.86rem", lineHeight: 1.55 }}>{step.summary}</p>}
+                                  {step.generatedKql && (
+                                    <details className="generated-kql" style={{ marginTop: "8px" }}>
+                                      <summary>View KQL</summary>
+                                      <pre><code>{step.generatedKql}</code></pre>
+                                    </details>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="incident-report__footer">
+                    <div className="incident-report__meta">
+                      <span className="incident-report__meta-item">🔍 {promptbookResult.steps.filter(s => !s.skipped).length} steps</span>
+                      <span className="incident-report__meta-sep">·</span>
+                      <span className="incident-report__meta-item">⏱ {Math.round(promptbookResult.totalDurationMs / 1000)}s</span>
+                      <span className="incident-report__meta-sep">·</span>
+                      <span className="incident-report__meta-item">~{promptbookResult.totalTokens} tokens</span>
+                    </div>
+                    <div className="incident-report__actions">
+                      <button type="button" className="incident-report__action" onClick={() => {
+                        setPromptbookResult(null);
+                        setActiveView("workspace");
+                      }}>View in workspace</button>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </main> : activeView === "pulse" ? <main className="pulse-view" aria-label="Workspace pulse">
