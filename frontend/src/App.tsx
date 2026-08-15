@@ -95,7 +95,6 @@ export default function App() {
     setTurns([]);
     setAnomalyReport(null);
     setIncidentReport(null);
-    setActiveView("workspace");
     setLiveMessage("Running promptbook investigation…");
     executePromptbook.mutate(id, {
       onSuccess: (result) => {
@@ -121,8 +120,7 @@ export default function App() {
             },
           }));
         setTurns(newTurns);
-        setActiveView("workspace");
-        setLiveMessage(`Promptbook complete: ${newTurns.length} steps loaded into workspace. Ask follow-up questions to drill down.`);
+        setLiveMessage(`Promptbook complete: ${newTurns.length} steps executed.`);
       },
       onError: (error) => {
         const message = error instanceof ApiError ? error.message : "Promptbook execution failed.";
