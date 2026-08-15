@@ -6,6 +6,8 @@ using LanternAI.Api.Services.Execution;
 using LanternAI.Api.Services.Llm;
 using LanternAI.Api.Services.QueryPlanning;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,11 +18,36 @@ builder.Services.AddOptions<OllamaOptions>()
     .Validate(options => !string.IsNullOrWhiteSpace(options.Model), "Ollama:Model is required.")
     .Validate(options => options.TimeoutSeconds is >= 1 and <= 300, "Ollama:TimeoutSeconds must be between 1 and 300.")
     .ValidateOnStart();
+builder.Services.AddOptions<SecurityOptions>()
+    .Bind(builder.Configuration.GetSection(SecurityOptions.SectionName))
+    .Validate(options => !options.Enabled || (Uri.TryCreate(options.Authority, UriKind.Absolute, out _) && !string.IsNullOrWhiteSpace(options.ClientId)), "Authentication:Authority and ClientId are required when authentication is enabled.")
+    .ValidateOnStart();
+
+var securityOptions = builder.Configuration.GetSection(SecurityOptions.SectionName).Get<SecurityOptions>() ?? new SecurityOptions();
+if (securityOptions.Enabled)
+{
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = securityOptions.Authority;
+            options.Audience = securityOptions.ClientId;
+            options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidateAudience = true, ValidateLifetime = true };
+        });
+    builder.Services.AddAuthorization(options =>
+    {
+        options.AddPolicy("Lantern.User", policy => policy.RequireAuthenticatedUser().RequireRole(securityOptions.RequiredRoles));
+        options.AddPolicy("Lantern.Admin", policy => policy.RequireAuthenticatedUser().RequireRole("Lantern.Admin"));
+    });
+}
 
 // --- Core services -------------------------------------------------------
 builder.Services.AddSingleton<IEventTableCatalog, InMemoryEventTableCatalog>();
 builder.Services.AddSingleton<IQueryExecutor, SimulatedQueryExecutor>();
 builder.Services.AddSingleton<IQueryPlanService, QueryPlanService>();
+builder.Services.AddSingleton<QueryCostEstimator>();
+builder.Services.AddSingleton<IDataSourceCapabilitiesProvider, SimulatedDataSourceCapabilitiesProvider>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IAuditStore, InMemoryAuditStore>();
 builder.Services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ollama", tags: ["ready"]);
 
 // Ollama is the Phase 1 LLM provider. To switch to Gemini once implemented,
@@ -114,6 +141,20 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+if (securityOptions.Enabled)
+{
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.Use(async (context, next) =>
+    {
+        if (context.User.GetTenantContext(securityOptions.TenantClaim) is null)
+        {
+            await Results.Problem("A tenant and subject claim are required.", statusCode: StatusCodes.Status403Forbidden).ExecuteAsync(context);
+            return;
+        }
+        await next();
+    });
+}
 
 // NOTE (auth extension point): this is a no-auth demo (single-user, local).
 // Before any shared/production deployment, add Entra ID authentication here,
@@ -128,9 +169,10 @@ app.UseExceptionHandler();
 app.UseCors("Frontend");
 app.UseRateLimiter();
 
-app.MapTablesEndpoints();
-app.MapQueryEndpoints();
+app.MapTablesEndpoints(securityOptions.Enabled);
+app.MapQueryEndpoints(securityOptions.Enabled);
 app.MapCapabilitiesEndpoints();
+app.MapAuditEndpoints(securityOptions.Enabled);
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => false,

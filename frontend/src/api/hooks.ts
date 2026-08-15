@@ -14,8 +14,21 @@ export function useBackendHealth() {
     queryKey: ["backend-health"],
     queryFn: api.checkHealth,
     refetchInterval: 30_000,
-    retry: 1,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    retry: 3,
+    retryDelay: 1_000,
     staleTime: 10_000,
+  });
+}
+
+export function useCapabilities() {
+  return useQuery({
+    queryKey: ["capabilities"],
+    queryFn: api.getCapabilities,
+    refetchInterval: 60_000,
+    retry: 2,
+    staleTime: 30_000,
   });
 }
 

@@ -7,9 +7,9 @@ public sealed class FakeLlmProvider(string response) : ILlmProvider
 {
     public string? LastUserPrompt { get; private set; }
 
-    public Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
+    public Task<LlmCompletion> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
     {
         LastUserPrompt = userPrompt;
-        return Task.FromResult(response);
+        return Task.FromResult(new LlmCompletion(response));
     }
 }

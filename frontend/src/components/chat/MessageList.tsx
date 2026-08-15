@@ -54,6 +54,7 @@ export function MessageList({ turns, onAsk }: MessageListProps) {
                   <span>{turn.response.plan.tables?.length ?? 1} source{(turn.response.plan.tables?.length ?? 1) === 1 ? "" : "s"}</span>
                   <span aria-hidden="true">·</span>
                   <span>{turn.response.result.rows.length} row{turn.response.result.rows.length === 1 ? "" : "s"}</span>
+                  {turn.response.diagnostics && <><span aria-hidden="true">·</span><span>{turn.response.diagnostics.cacheHit ? "cached" : `${turn.response.diagnostics.costTier} cost`}</span></>}
                   <button type="button" className="message-action" onClick={async () => {
                     await navigator.clipboard.writeText(turn.response!.generatedKql);
                     setCopiedTurnId(turn.id);

@@ -1,4 +1,4 @@
-import type { HealthStatus, ProblemDetails, QueryResponse, TableSchema } from "./types";
+import type { HealthStatus, ProblemDetails, QueryResponse, SystemCapabilities, TableSchema } from "./types";
 
 /**
  * In GitHub Codespaces (and VS Code's forwarded-port URLs generally), the
@@ -59,6 +59,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       throw new ApiError(message, response.status, problem?.correlationId ?? response.headers.get("X-Correlation-ID") ?? undefined);
     }
 
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) return {} as T;
     return (await response.json()) as T;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -73,6 +75,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   listTables: () => request<TableSchema[]>("/api/tables"),
   checkHealth: () => request<HealthStatus>("/health/ready").then(() => ({ ok: true })),
+  getCapabilities: () => request<SystemCapabilities>("/api/capabilities"),
   runQuery: (question: string) =>
     request<QueryResponse>("/api/query", {
       method: "POST",

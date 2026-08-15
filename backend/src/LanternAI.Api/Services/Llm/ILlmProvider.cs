@@ -9,5 +9,5 @@ namespace LanternAI.Api.Services.Llm;
 /// </summary>
 public interface ILlmProvider
 {
-    Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default);
+    Task<LlmCompletion> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default);
 }

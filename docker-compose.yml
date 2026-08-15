@@ -21,7 +21,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Ollama__BaseUrl: http://ollama:11434
-      Ollama__Model: qwen2.5-coder
+      Ollama__Model: qwen2.5-coder:1.5b
       Cors__AllowedOrigins__0: http://localhost:5173
     depends_on:
       ollama:

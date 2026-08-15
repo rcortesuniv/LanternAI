@@ -52,6 +52,23 @@ export interface QueryResponse {
   generatedKql: string;
   plan: QueryPlan;
   result: QueryResultData;
+  usage?: QueryUsage | null;
+  diagnostics?: QueryDiagnostics | null;
+}
+
+export interface QueryUsage {
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  totalTokens?: number | null;
+}
+
+export interface QueryDiagnostics {
+  cacheHit: boolean;
+  cacheKeyVersion: string;
+  costTier: string;
+  estimatedRowsScanned: number;
+  estimatedWorkUnits: number;
+  costExplanation: string;
 }
 
 export interface ProblemDetails {
@@ -64,4 +81,12 @@ export interface ProblemDetails {
 
 export interface HealthStatus {
   ok: boolean;
+}
+
+export interface SystemCapabilities {
+  authentication: { configured: boolean; provider: string };
+  data: { configured: boolean; provider: string };
+  languageModel: { provider: string; model: string };
+  sourceCount: number;
+  dataSources: Array<{ name: string; kind: string; supportsJoins: boolean; supportsAggregations: boolean; supportsCaching: boolean }>;
 }

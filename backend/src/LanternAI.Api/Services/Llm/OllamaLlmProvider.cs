@@ -14,7 +14,7 @@ public sealed class OllamaLlmProvider(HttpClient httpClient, IOptions<OllamaOpti
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
+    public async Task<LlmCompletion> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
     {
         var request = new ChatRequest(
             options.Value.Model,
@@ -40,15 +40,19 @@ public sealed class OllamaLlmProvider(HttpClient httpClient, IOptions<OllamaOpti
         }
 
         var payload = await response.Content.ReadFromJsonAsync<ChatResponse>(JsonOptions, cancellationToken);
-        return payload?.Message?.Content
-            ?? throw new LlmUnavailableException("Ollama returned an empty response.");
+        return payload?.Message is { Content: not null } message
+            ? new LlmCompletion(message.Content, payload.PromptEvalCount, payload.EvalCount)
+            : throw new LlmUnavailableException("Ollama returned an empty response.");
     }
 
     private sealed record ChatRequest(string Model, IReadOnlyList<ChatMessage> Messages, bool Stream);
 
     private sealed record ChatMessage(string Role, string Content);
 
-    private sealed record ChatResponse([property: JsonPropertyName("message")] ChatMessage? Message);
+    private sealed record ChatResponse(
+        [property: JsonPropertyName("message")] ChatMessage? Message,
+        [property: JsonPropertyName("prompt_eval_count")] int? PromptEvalCount,
+        [property: JsonPropertyName("eval_count")] int? EvalCount);
 }
 
 /// <summary>Thrown when the configured LLM provider cannot be reached or returns something unusable.</summary>

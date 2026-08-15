@@ -5,6 +5,7 @@ import { TableCatalogPanel } from "./components/catalog/TableCatalogPanel";
 import { ChatInput } from "./components/chat/ChatInput";
 import { MessageList } from "./components/chat/MessageList";
 import { QueryHistoryPanel } from "./components/history/QueryHistoryPanel";
+import { OperatorDashboard } from "./components/dashboard/OperatorDashboard";
 import type { ChatTurn } from "./components/chat/types";
 
 export default function App() {
@@ -51,8 +52,8 @@ export default function App() {
           <button type="button" className="home-button" onClick={() => { setTurns([]); setLiveMessage(""); }}>
             <span aria-hidden="true">←</span> Back to home
           </button>
-          <span className={`environment-pill environment-pill--${backendHealth.isError ? "offline" : "online"}`}>
-            <span className="status-dot" aria-hidden="true" /> {backendHealth.isError ? "Backend offline" : "Backend ready"}
+          <span className={`environment-pill environment-pill--${backendHealth.isError && !backendHealth.isFetching ? "offline" : "online"}`}>
+            <span className="status-dot" aria-hidden="true" /> {backendHealth.isFetching ? "Checking backend" : backendHealth.isError ? "Backend offline" : "Backend ready"}
           </span>
           <span className="header-meta__version">Workspace 01</span>
         </div>
@@ -85,6 +86,7 @@ export default function App() {
               <span>catalog connected</span>
             </div>
           </section>
+          <OperatorDashboard turns={turns} />
           <div className="chat-panel__messages">
             <MessageList turns={turns} onAsk={handleAsk} />
           </div>

@@ -6,4 +6,7 @@ namespace LanternAI.Api.Services.QueryPlanning;
 public interface IQueryPlanService
 {
     Task<QueryPlan> BuildPlanAsync(string question, CancellationToken cancellationToken = default);
+    Task<QueryPlanBuildResult> BuildPlanWithUsageAsync(string question, CancellationToken cancellationToken = default);
 }
+
+public sealed record QueryPlanBuildResult(QueryPlan Plan, int? PromptTokens, int? CompletionTokens, int? TotalTokens);

@@ -13,6 +13,6 @@ namespace LanternAI.Api.Services.Llm;
 /// </summary>
 public sealed class GeminiLlmProvider : ILlmProvider
 {
-    public Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default) =>
+    public Task<LlmCompletion> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default) =>
         throw new NotImplementedException("Gemini provider is not implemented yet — Phase 1 uses Ollama. See class remarks.");
 }

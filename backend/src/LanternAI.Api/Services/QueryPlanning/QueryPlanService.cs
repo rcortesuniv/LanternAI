@@ -24,6 +24,9 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
     };
 
     public async Task<QueryPlan> BuildPlanAsync(string question, CancellationToken cancellationToken = default)
+        => (await BuildPlanWithUsageAsync(question, cancellationToken)).Plan;
+
+    public async Task<QueryPlanBuildResult> BuildPlanWithUsageAsync(string question, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(question))
         {
@@ -31,10 +34,10 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         }
 
         var systemPrompt = BuildSystemPrompt();
-        var rawResponse = await llmProvider.CompleteAsync(systemPrompt, question, cancellationToken);
+        var completion = await llmProvider.CompleteAsync(systemPrompt, question, cancellationToken);
 
-        var raw = ParseJson(rawResponse);
-        return Validate(raw);
+        var raw = ParseJson(completion.Content);
+        return new QueryPlanBuildResult(Validate(raw), completion.PromptTokens, completion.CompletionTokens, completion.TotalTokens);
     }
 
     private string BuildSystemPrompt()

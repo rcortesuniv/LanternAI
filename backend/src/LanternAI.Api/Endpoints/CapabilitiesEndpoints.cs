@@ -1,6 +1,7 @@
 using LanternAI.Api.Services.Catalog;
 using LanternAI.Api.Services.Llm;
 using Microsoft.Extensions.Options;
+using LanternAI.Api.Services.Execution;
 
 namespace LanternAI.Api.Endpoints;
 
@@ -8,7 +9,7 @@ public static class CapabilitiesEndpoints
 {
     public static void MapCapabilitiesEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/capabilities", (IEventTableCatalog catalog, IOptions<OllamaOptions> ollama, IConfiguration configuration) =>
+        app.MapGet("/api/capabilities", (IEventTableCatalog catalog, IOptions<OllamaOptions> ollama, IConfiguration configuration, IDataSourceCapabilitiesProvider sources) =>
         {
             var authConfigured = !string.IsNullOrWhiteSpace(configuration["Authentication:Authority"])
                 && !string.IsNullOrWhiteSpace(configuration["Authentication:ClientId"]);
@@ -21,6 +22,7 @@ public static class CapabilitiesEndpoints
                 data = new { configured = adxConfigured, provider = adxConfigured ? "Azure Data Explorer" : "Simulated catalog" },
                 languageModel = new { provider = "Ollama", model = ollama.Value.Model },
                 sourceCount = catalog.GetTables().Count,
+                dataSources = sources.GetCapabilities(),
             });
         }).WithName("GetCapabilities");
     }
