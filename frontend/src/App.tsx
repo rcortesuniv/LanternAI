@@ -9,11 +9,14 @@ import { OperatorDashboard } from "./components/dashboard/OperatorDashboard";
 import { UserStatistics } from "./components/statistics/UserStatistics";
 import type { ChatTurn } from "./components/chat/types";
 import { QueryLibrary as LibraryPanel } from "./components/library/LibraryPanel";
+import { QUERY_LIBRARY } from "./components/library/libraryData";
 import type { QueryRequestPayload } from "./api/types";
+
+type ViewName = "workspace" | "library" | "pulse" | "statistics" | "catalog";
 
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "clear">("dark");
-  const [activeView, setActiveView] = useState<"workspace" | "catalog" | "pulse" | "statistics">("workspace");
+  const [activeView, setActiveView] = useState<ViewName>("workspace");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [recentQuestions, setRecentQuestions] = useState<string[]>(() => loadQuestions("lantern-recent-queries"));
   const [savedQuestions, setSavedQuestions] = useState<string[]>(() => loadQuestions("lantern-saved-queries"));
@@ -33,13 +36,13 @@ export default function App() {
     setRecentQuestions((current) => [question, ...current.filter((item) => item !== question)].slice(0, 8));
     const id = crypto.randomUUID();
     setTurns((prev) => [...prev, { id, question, status: "loading" }]);
+    setActiveView("workspace");
 
     const loadingMsg = summarize
       ? "Generating query and summarizing results…"
       : "Generating query…";
     setLiveMessage(loadingMsg);
 
-    // Build follow-up context from the last successful turn.
     const lastSuccess = [...turns].reverse().find((t) => t.status === "success" && t.response);
     const payload: QueryRequestPayload = {
       question,
@@ -65,6 +68,8 @@ export default function App() {
 
   useEffect(() => localStorage.setItem("lantern-recent-queries", JSON.stringify(recentQuestions)), [recentQuestions]);
   useEffect(() => localStorage.setItem("lantern-saved-queries", JSON.stringify(savedQuestions)), [savedQuestions]);
+
+  const totalQueries = QUERY_LIBRARY.reduce((sum, cat) => sum + cat.queries.length, 0);
 
   return (
     <div className={`app-shell app-shell--${theme}`}>
@@ -100,6 +105,7 @@ export default function App() {
 
       <nav className="app-tabs" aria-label="Primary navigation">
         <button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => setActiveView("workspace")}>Workspace</button>
+        <button type="button" className={activeView === "library" ? "is-active" : ""} onClick={() => setActiveView("library")}>Query library <span>{totalQueries}</span></button>
         <button type="button" className={activeView === "pulse" ? "is-active" : ""} onClick={() => setActiveView("pulse")}>Pulse</button>
         <button type="button" className={activeView === "statistics" ? "is-active" : ""} onClick={() => setActiveView("statistics")}>User statistics</button>
         <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => setActiveView("catalog")}>Data catalog <span>{tables.isLoading ? "…" : tables.data?.length ?? "—"}</span></button>
@@ -115,13 +121,21 @@ export default function App() {
             onToggleSaved={(question) => setSavedQuestions((current) => current.includes(question) ? current.filter((item) => item !== question) : [question, ...current].slice(0, 8))}
             onClearRecent={() => setRecentQuestions([])}
           />
-          <LibraryPanel onAsk={handleAsk} />
         </aside>
 
         {activeView === "statistics" ? <UserStatistics turns={turns} savedQuestions={savedQuestions} /> : activeView === "catalog" ? <main className="catalog-view" aria-label="Data catalog">
           <TableCatalogPanel />
         </main> : activeView === "pulse" ? <main className="pulse-view" aria-label="Workspace pulse">
           <OperatorDashboard turns={turns} />
+        </main> : activeView === "library" ? <main className="library-view" aria-label="Query library">
+          <div className="library-view__header">
+            <div>
+              <p className="eyebrow">INVESTIGATION TEMPLATES</p>
+              <h1>Query library</h1>
+              <p className="library-view__subtitle">{totalQueries} curated questions across {QUERY_LIBRARY.length} categories, mapped to your {tables.data?.length ?? 16} data sources.</p>
+            </div>
+          </div>
+          <LibraryPanel onAsk={handleAsk} />
         </main> : <main className="chat-panel" aria-label="Query chat">
           <section className="workspace-intro">
             <div>
@@ -157,7 +171,6 @@ export default function App() {
         </main>}
       </div>
 
-      {/* Announces async status changes to screen reader users without moving visual focus. */}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </div>
