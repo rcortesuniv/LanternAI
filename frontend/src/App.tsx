@@ -92,11 +92,36 @@ export default function App() {
   const handleExecutePromptbook = (id: string) => {
     setActivePromptbook(id);
     setPromptbookResult(null);
+    setTurns([]);
+    setAnomalyReport(null);
+    setIncidentReport(null);
     setLiveMessage("Running promptbook investigation…");
     executePromptbook.mutate(id, {
       onSuccess: (result) => {
         setPromptbookResult(result);
-        setLiveMessage(`Promptbook complete: ${result.steps.filter(s => !s.skipped).length} steps executed in ${Math.round(result.totalDurationMs / 1000)}s.`);
+        // Inject each non-skipped step as a chat turn in the workspace
+        const newTurns: ChatTurn[] = result.steps
+          .filter(s => !s.skipped && s.plan && s.result)
+          .map((s, idx) => ({
+            id: `pb-${result.promptbookId}-${idx}`,
+            question: s.question,
+            status: "success" as const,
+            response: {
+              question: s.question,
+              generatedKql: s.generatedKql ?? "",
+              plan: s.plan!,
+              result: s.result!,
+              resultSummary: s.summary ?? null,
+              usage: null,
+              diagnostics: null,
+              explanation: null,
+              metrics: null,
+              auditId: null,
+            },
+          }));
+        setTurns(newTurns);
+        setActiveView("workspace");
+        setLiveMessage(`Promptbook complete: ${newTurns.length} steps loaded into workspace. Ask follow-up questions to drill down.`);
       },
       onError: (error) => {
         const message = error instanceof ApiError ? error.message : "Promptbook execution failed.";
