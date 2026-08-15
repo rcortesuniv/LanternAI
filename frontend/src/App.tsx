@@ -17,7 +17,7 @@ export default function App() {
   const [recentQuestions, setRecentQuestions] = useState<string[]>(() => loadQuestions("lantern-recent-queries"));
   const [savedQuestions, setSavedQuestions] = useState<string[]>(() => loadQuestions("lantern-saved-queries"));
   const [liveMessage, setLiveMessage] = useState("");
-  const [selectedTimeRange, setSelectedTimeRange] = useState<number | null>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<number | null>(24);
   const [summarize, setSummarize] = useState(false);
   const runQuery = useRunQuery();
   const backendHealth = useBackendHealth();

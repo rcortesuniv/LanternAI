@@ -239,7 +239,9 @@ button:disabled { cursor: not-allowed; }
 .result-table__clear { margin-left: 8px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--green-dark); font: 600 0.64rem var(--sans); cursor: pointer; }
 .result-table__clear:hover { border-color: var(--green); background: var(--green-pale); }
 
-.chat-input { display: flex; align-items: flex-end; gap: 10px; max-width: 1100px; width: 100%; padding: 16px clamp(28px, 5vw, 76px) 24px; margin: 0 auto; border-top: 1px solid var(--line); background: var(--surface); }
+.chat-input { display: flex; flex-direction: column; gap: 0; max-width: 1100px; width: 100%; padding: 12px clamp(28px, 5vw, 76px) 20px; margin: 0 auto; border-top: 1px solid var(--line); background: var(--surface); }
+.chat-input__row { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
+.chat-input__row--bottom { align-items: stretch; }
 .chat-input__field { flex: 1; min-width: 0; }
 .chat-input__textarea { display: block; width: 100%; min-height: 54px; resize: vertical; padding: 14px 15px; border: 1px solid #b8c7bf; border-radius: 8px 8px 5px 5px; outline: none; background: #fbfdfb; color: var(--ink); font: 0.78rem var(--sans); transition: border-color 160ms ease, box-shadow 160ms ease; }
 .chat-input__textarea::placeholder { color: #8b9891; }
@@ -247,7 +249,7 @@ button:disabled { cursor: not-allowed; }
 .chat-input__hint { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border: 1px solid #b8c7bf; border-top: 0; border-radius: 0 0 5px 5px; color: var(--muted); font: 0.58rem var(--mono); }
 .chat-input__hint span:last-child { color: var(--green-dark); }
 .app-shell:not(.app-shell--clear) .chat-input__textarea, .app-shell:not(.app-shell--clear) .chat-input__hint { border-color: #2b514a; }
-.chat-input__submit { display: flex; align-items: center; align-self: stretch; gap: 13px; padding: 0 17px; border: 0; border-radius: 8px; background: var(--coral); color: #fff; font: 700 0.72rem var(--sans); cursor: pointer; transition: background 160ms ease, transform 160ms ease; }
+.chat-input__submit { display: flex; align-items: center; align-self: stretch; gap: 13px; padding: 0 17px; border: 0; border-radius: 8px; background: var(--coral); color: #fff; font: 700 0.72rem var(--sans); cursor: pointer; transition: background 160ms ease, transform 160ms ease; white-space: nowrap; }
 .chat-input__submit:hover:not(:disabled) { background: var(--coral-dark); transform: translateY(-1px); }
 .chat-input__submit:disabled { opacity: 0.45; cursor: not-allowed; }
 .button-arrow { font-size: 1rem; }
@@ -445,14 +447,15 @@ body {
 .chat-input__toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 0 8px;
+  gap: 10px;
+  padding: 0 0 10px;
   flex-wrap: wrap;
 }
 
 .chat-input__time-range {
   display: inline-flex;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .time-pill {
@@ -460,10 +463,12 @@ body {
   border: 1px solid var(--line, #21423c);
   border-radius: 999px;
   background: transparent;
-  color: var(--ink-soft, #9bb0ac);
-  font-size: 0.78rem;
+  color: var(--muted, #8b9891);
+  font-size: 0.72rem;
+  font-family: var(--mono, monospace);
   cursor: pointer;
   transition: all 0.12s ease;
+  white-space: nowrap;
 }
 
 .time-pill:hover {
@@ -484,37 +489,40 @@ body {
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  font-size: 0.78rem;
-  color: var(--ink-soft, #9bb0ac);
+  font-size: 0.72rem;
+  color: var(--muted, #8b9891);
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
 }
 
 .chat-input__summarize input[type="checkbox"] {
   accent-color: var(--green, #5ce0b3);
+  width: 13px;
+  height: 13px;
 }
 
 /* --- Result summary --- */
 .result-summary {
   display: flex;
   gap: 8px;
-  padding: 10px 12px;
-  margin: 8px 0;
-  border: 1px solid var(--line, #21423c);
-  border-left: 3px solid var(--green, #5ce0b3);
+  padding: 10px 14px;
+  margin: 10px 0;
+  border: 1px solid var(--line, #d5e5e0);
+  border-left: 3px solid var(--green, #0c806b);
   border-radius: 6px;
-  background: rgba(16, 34, 32, 0.7);
+  background: rgba(12, 128, 107, 0.04);
 }
 
 .result-summary__icon {
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.85rem;
+  line-height: 1.5;
   flex-shrink: 0;
 }
 
 .result-summary__text {
   margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: var(--ink, #d4e8e4);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--ink, #1a3a36);
 }
