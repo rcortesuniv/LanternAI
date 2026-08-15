@@ -124,3 +124,73 @@ export interface QueryRequestPayload {
   previousPlan?: QueryPlan | null;
   previousSummary?: string | null;
 }
+
+// --- Promptbooks ---
+
+export interface PromptbookStep {
+  question: string;
+  description: string;
+  minRowsToContinue?: number | null;
+  summarize?: boolean;
+}
+
+export interface PromptbookSummary {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  stepCount: number;
+  steps: PromptbookStep[];
+}
+
+export interface PromptbookStepResult {
+  stepIndex: number;
+  question: string;
+  plan: QueryPlan | null;
+  result: QueryResultData | null;
+  generatedKql: string | null;
+  summary: string | null;
+  rowCount: number;
+  skipped: boolean;
+}
+
+export interface PromptbookExecutionResult {
+  promptbookId: string;
+  promptbookName: string;
+  steps: PromptbookStepResult[];
+  totalDurationMs: number;
+  totalTokens: number;
+}
+
+// --- Anomaly detection ---
+
+export interface AnomalyFlag {
+  severity: string;
+  title: string;
+  description: string;
+  evidence: string[];
+}
+
+export interface AnomalyReport {
+  flags: AnomalyFlag[];
+  hasFindings: boolean;
+}
+
+// --- Incident summary ---
+
+export interface SessionQuery {
+  question: string;
+  plan: QueryPlan | null;
+  rowCount: number;
+  summary: string | null;
+}
+
+export interface IncidentSummary {
+  title: string;
+  overview: string;
+  keyFindings: string[];
+  riskAssessment: string;
+  recommendedActions: string[];
+  queryCount: number;
+  totalRowsAnalyzed: number;
+}

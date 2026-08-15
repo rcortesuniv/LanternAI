@@ -10,9 +10,10 @@ import { UserStatistics } from "./components/statistics/UserStatistics";
 import type { ChatTurn } from "./components/chat/types";
 import { QueryLibrary as LibraryPanel } from "./components/library/LibraryPanel";
 import { QUERY_LIBRARY } from "./components/library/libraryData";
-import type { QueryRequestPayload } from "./api/types";
+import type { QueryRequestPayload, PromptbookExecutionResult, AnomalyReport, IncidentSummary, SessionQuery } from "./api/types";
+import { usePromptbooks, useExecutePromptbook, useDetectAnomalies, useIncidentSummary } from "./api/hooks";
 
-type ViewName = "workspace" | "library" | "pulse" | "statistics" | "catalog";
+type ViewName = "workspace" | "library" | "promptbooks" | "pulse" | "statistics" | "catalog";
 
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "clear">("dark");
@@ -27,6 +28,14 @@ export default function App() {
   const backendHealth = useBackendHealth();
   const modelReadiness = useModelReadiness();
   const tables = useTables();
+  const promptbooks = usePromptbooks();
+  const executePromptbook = useExecutePromptbook();
+  const detectAnomalies = useDetectAnomalies();
+  const incidentSummary = useIncidentSummary();
+  const [activePromptbook, setActivePromptbook] = useState<string | null>(null);
+  const [promptbookResult, setPromptbookResult] = useState<PromptbookExecutionResult | null>(null);
+  const [anomalyReport, setAnomalyReport] = useState<AnomalyReport | null>(null);
+  const [incidentReport, setIncidentReport] = useState<IncidentSummary | null>(null);
 
   const handleAsk = (question: string) => {
     if (modelReadiness.isError) {
@@ -62,6 +71,61 @@ export default function App() {
         const message = error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
         setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, status: "error", errorMessage: message } : t)));
         setLiveMessage(`Query failed: ${message}`);
+      },
+    });
+  };
+
+  // Auto-detect anomalies after a successful query
+  useEffect(() => {
+    const lastSuccess = [...turns].reverse().find((t) => t.status === "success" && t.response);
+    if (lastSuccess?.response && !anomalyReport) {
+      detectAnomalies.mutate(
+        { plan: lastSuccess.response.plan, result: lastSuccess.response.result },
+        { onSuccess: setAnomalyReport }
+      );
+    }
+    if (!lastSuccess?.response) {
+      setAnomalyReport(null);
+    }
+  }, [turns]);
+
+  const handleExecutePromptbook = (id: string) => {
+    setActivePromptbook(id);
+    setPromptbookResult(null);
+    setLiveMessage("Running promptbook investigation…");
+    executePromptbook.mutate(id, {
+      onSuccess: (result) => {
+        setPromptbookResult(result);
+        setLiveMessage(`Promptbook complete: ${result.steps.filter(s => !s.skipped).length} steps executed in ${Math.round(result.totalDurationMs / 1000)}s.`);
+      },
+      onError: (error) => {
+        const message = error instanceof ApiError ? error.message : "Promptbook execution failed.";
+        setLiveMessage(`Promptbook failed: ${message}`);
+      },
+    });
+  };
+
+  const handleGenerateIncidentSummary = () => {
+    const queries: SessionQuery[] = turns
+      .filter((t) => t.status === "success" && t.response)
+      .map((t) => ({
+        question: t.question,
+        plan: t.response!.plan,
+        rowCount: t.response!.result.rows.length,
+        summary: t.response!.resultSummary ?? null,
+      }));
+    if (queries.length === 0) {
+      setLiveMessage("Run at least one query before generating an incident summary.");
+      return;
+    }
+    setLiveMessage("Generating incident summary…");
+    incidentSummary.mutate(queries, {
+      onSuccess: (summary) => {
+        setIncidentReport(summary);
+        setLiveMessage("Incident summary generated.");
+      },
+      onError: (error) => {
+        setLiveMessage(`Incident summary failed: ${error instanceof ApiError ? error.message : "unknown error"}`);
       },
     });
   };
@@ -106,6 +170,7 @@ export default function App() {
       <nav className="app-tabs" aria-label="Primary navigation">
         <button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => setActiveView("workspace")}>Workspace</button>
         <button type="button" className={activeView === "library" ? "is-active" : ""} onClick={() => setActiveView("library")}>Query library <span>{totalQueries}</span></button>
+        <button type="button" className={activeView === "promptbooks" ? "is-active" : ""} onClick={() => setActiveView("promptbooks")}>Promptbooks <span>{promptbooks.data?.length ?? "—"}</span></button>
         <button type="button" className={activeView === "pulse" ? "is-active" : ""} onClick={() => setActiveView("pulse")}>Pulse</button>
         <button type="button" className={activeView === "statistics" ? "is-active" : ""} onClick={() => setActiveView("statistics")}>User statistics</button>
         <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => setActiveView("catalog")}>Data catalog <span>{tables.isLoading ? "…" : tables.data?.length ?? "—"}</span></button>
@@ -125,6 +190,76 @@ export default function App() {
 
         {activeView === "statistics" ? <UserStatistics turns={turns} savedQuestions={savedQuestions} /> : activeView === "catalog" ? <main className="catalog-view" aria-label="Data catalog">
           <TableCatalogPanel />
+        </main> : activeView === "promptbooks" ? <main className="promptbook-view" aria-label="Promptbooks">
+          <div className="promptbook-view__header">
+            <div>
+              <p className="eyebrow">AUTOMATED INVESTIGATIONS</p>
+              <h1>Promptbooks</h1>
+              <p className="promptbook-view__subtitle">Multi-step investigation sequences that chain queries automatically. Each step builds on the previous result's context.</p>
+            </div>
+          </div>
+          {promptbooks.isLoading && <p className="status-loading"><span className="spinner" aria-hidden="true" /> Loading promptbooks…</p>}
+          {promptbooks.data && (
+            <div className="promptbook-list">
+              {promptbooks.data.map((book) => (
+                <div key={book.id} className="promptbook-card">
+                  <div className="promptbook-card__header">
+                    <div>
+                      <h3>{book.name}</h3>
+                      <p className="promptbook-card__category">{book.category}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="promptbook-card__run"
+                      disabled={executePromptbook.isPending && activePromptbook === book.id}
+                      onClick={() => handleExecutePromptbook(book.id)}
+                    >
+                      {executePromptbook.isPending && activePromptbook === book.id ? "Running…" : "Run"}
+                    </button>
+                  </div>
+                  <p className="promptbook-card__desc">{book.description}</p>
+                  <ol className="promptbook-card__steps">
+                    {book.steps.map((step, idx) => (
+                      <li key={idx}>
+                        <span className="promptbook-step__num">{idx + 1}</span>
+                        <div>
+                          <p className="promptbook-step__q">{step.question}</p>
+                          <p className="promptbook-step__desc">{step.description}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          )}
+          {promptbookResult && (
+            <div className="promptbook-results">
+              <h2>Results: {promptbookResult.promptbookName}</h2>
+              <p className="promptbook-results__meta">
+                {promptbookResult.steps.filter(s => !s.skipped).length} steps executed ·
+                {" "}{Math.round(promptbookResult.totalDurationMs / 1000)}s ·
+                {" ~"}{promptbookResult.totalTokens} tokens
+              </p>
+              {promptbookResult.steps.map((step) => (
+                <div key={step.stepIndex} className={`promptbook-step-result ${step.skipped ? "is-skipped" : ""}`}>
+                  <div className="promptbook-step-result__header">
+                    <span className="promptbook-step__num">{step.stepIndex + 1}</span>
+                    <span className="promptbook-step-result__q">{step.question}</span>
+                    {step.skipped && <span className="promptbook-step-result__skipped">Skipped</span>}
+                    {!step.skipped && <span className="promptbook-step-result__rows">{step.rowCount} rows</span>}
+                  </div>
+                  {step.summary && <p className="promptbook-step-result__summary">{step.summary}</p>}
+                  {step.generatedKql && (
+                    <details className="generated-kql">
+                      <summary>View KQL</summary>
+                      <pre><code>{step.generatedKql}</code></pre>
+                    </details>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </main> : activeView === "pulse" ? <main className="pulse-view" aria-label="Workspace pulse">
           <OperatorDashboard turns={turns} />
         </main> : activeView === "library" ? <main className="library-view" aria-label="Query library">
@@ -157,9 +292,59 @@ export default function App() {
               <p><strong>Natural-language queries are paused.</strong> Start Ollama, then use Retry in the header to reconnect the model.</p>
             </div>
           )}
+          {anomalyReport && anomalyReport.hasFindings && (
+            <div className="anomaly-banner" role="alert">
+              <p className="anomaly-banner__title">⚠ Findings detected</p>
+              <ul className="anomaly-banner__list">
+                {anomalyReport.flags.map((flag, idx) => (
+                  <li key={idx} className={`anomaly-flag anomaly-flag--${flag.severity}`}>
+                    <strong>{flag.title}</strong> — {flag.description}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="chat-panel__messages">
             <MessageList turns={turns} onAsk={handleAsk} />
           </div>
+          {turns.some(t => t.status === "success") && (
+            <div className="chat-panel__actions">
+              <button
+                type="button"
+                className="incident-btn"
+                disabled={incidentSummary.isPending}
+                onClick={handleGenerateIncidentSummary}
+              >
+                {incidentSummary.isPending ? "Generating report…" : "Generate incident report"}
+              </button>
+            </div>
+          )}
+          {incidentReport && (
+            <div className="incident-report" role="article">
+              <div className="incident-report__header">
+                <h2>{incidentReport.title}</h2>
+                <button type="button" className="incident-report__close" onClick={() => setIncidentReport(null)}>×</button>
+              </div>
+              <p className="incident-report__overview">{incidentReport.overview}</p>
+              {incidentReport.keyFindings.length > 0 && (
+                <div className="incident-report__section">
+                  <h3>Key findings</h3>
+                  <ul>{incidentReport.keyFindings.map((f, i) => <li key={i}>{f}</li>)}</ul>
+                </div>
+              )}
+              <div className="incident-report__section">
+                <h3>Risk assessment</h3>
+                <p>{incidentReport.riskAssessment}</p>
+              </div>
+              {incidentReport.recommendedActions.length > 0 && (
+                <div className="incident-report__section">
+                  <h3>Recommended actions</h3>
+                  <ul>{incidentReport.recommendedActions.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                </div>
+              )}
+              <p className="incident-report__meta">Based on {incidentReport.queryCount} queries · {incidentReport.totalRowsAnalyzed} rows analyzed</p>
+            </div>
+          )}
           <ChatInput
             onSubmit={handleAsk}
             disabled={runQuery.isPending || modelReadiness.isError}

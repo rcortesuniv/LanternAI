@@ -5,6 +5,7 @@ using LanternAI.Api.Services.Catalog;
 using LanternAI.Api.Services.Execution;
 using LanternAI.Api.Services.Llm;
 using LanternAI.Api.Services.QueryPlanning;
+using LanternAI.Api.Services.Analysis;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -49,6 +50,7 @@ builder.Services.AddSingleton<QueryCostEstimator>();
 builder.Services.AddSingleton<IDataSourceCapabilitiesProvider, SimulatedDataSourceCapabilitiesProvider>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAuditStore, InMemoryAuditStore>();
+builder.Services.AddSingleton<IncidentSummaryService>();
 builder.Services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ollama", tags: ["ready"]);
 
 // Ollama is the Phase 1 LLM provider. To switch to Gemini once implemented,
@@ -198,6 +200,7 @@ app.UseRateLimiter();
 app.MapTablesEndpoints(securityOptions.Enabled);
 app.MapQueryEndpoints(securityOptions.Enabled);
 app.MapCapabilitiesEndpoints();
+app.MapAnalysisEndpoints();
 app.MapAuditEndpoints(securityOptions.Enabled);
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {

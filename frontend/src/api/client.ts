@@ -1,4 +1,4 @@
-import type { HealthStatus, ProblemDetails, QueryResponse, QueryRequestPayload, SystemCapabilities, TableSchema } from "./types";
+import type { HealthStatus, ProblemDetails, QueryResponse, QueryRequestPayload, SystemCapabilities, TableSchema, PromptbookSummary, PromptbookExecutionResult, AnomalyReport, IncidentSummary, SessionQuery, QueryPlan, QueryResultData } from "./types";
 
 /**
  * In GitHub Codespaces (and VS Code's forwarded-port URLs generally), the
@@ -91,5 +91,21 @@ export const api = {
     request<QueryResponse>("/api/query", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+};
+
+export const analysisApi = {
+  listPromptbooks: () => request<PromptbookSummary[]>("/api/promptbooks"),
+  executePromptbook: (id: string) =>
+    request<PromptbookExecutionResult>(`/api/promptbooks/${id}/execute`, { method: "POST" }),
+  detectAnomalies: (plan: QueryPlan, result: QueryResultData) =>
+    request<AnomalyReport>("/api/analyze/anomalies", {
+      method: "POST",
+      body: JSON.stringify({ plan, result }),
+    }),
+  generateIncidentSummary: (queries: SessionQuery[]) =>
+    request<IncidentSummary>("/api/analyze/incident-summary", {
+      method: "POST",
+      body: JSON.stringify({ queries }),
     }),
 };

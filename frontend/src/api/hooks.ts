@@ -51,3 +51,33 @@ export function useRunQuery() {
     mutationFn: (payload: QueryRequestPayload) => api.runQuery(payload),
   });
 }
+
+import type { SessionQuery, QueryPlan, QueryResultData } from "./types";
+import { analysisApi } from "./client";
+
+export function usePromptbooks() {
+  return useQuery({
+    queryKey: ["promptbooks"],
+    queryFn: analysisApi.listPromptbooks,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useExecutePromptbook() {
+  return useMutation({
+    mutationFn: (id: string) => analysisApi.executePromptbook(id),
+  });
+}
+
+export function useDetectAnomalies() {
+  return useMutation({
+    mutationFn: ({ plan, result }: { plan: QueryPlan; result: QueryResultData }) =>
+      analysisApi.detectAnomalies(plan, result),
+  });
+}
+
+export function useIncidentSummary() {
+  return useMutation({
+    mutationFn: (queries: SessionQuery[]) => analysisApi.generateIncidentSummary(queries),
+  });
+}
