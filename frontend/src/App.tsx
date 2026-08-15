@@ -8,6 +8,7 @@ import { QueryHistoryPanel } from "./components/history/QueryHistoryPanel";
 import { OperatorDashboard } from "./components/dashboard/OperatorDashboard";
 import { UserStatistics } from "./components/statistics/UserStatistics";
 import type { ChatTurn } from "./components/chat/types";
+import { QueryLibrary } from "./components/library/QueryLibrary";
 import type { QueryRequestPayload } from "./api/types";
 
 export default function App() {
@@ -114,6 +115,7 @@ export default function App() {
             onToggleSaved={(question) => setSavedQuestions((current) => current.includes(question) ? current.filter((item) => item !== question) : [question, ...current].slice(0, 8))}
             onClearRecent={() => setRecentQuestions([])}
           />
+          <QueryLibrary onAsk={handleAsk} />
         </aside>
 
         {activeView === "statistics" ? <UserStatistics turns={turns} savedQuestions={savedQuestions} /> : activeView === "catalog" ? <main className="catalog-view" aria-label="Data catalog">
