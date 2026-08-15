@@ -1036,23 +1036,23 @@ body {
 .app-shell:not(.app-shell--clear) .incident-report__icon {
   background: #123b35;
 }
-.app-shell:not(.app-shell--clear) .incident-report__label { color: var(--green); }
+.app-shell:not(.app-shell--clear) .incident-report__label { color: var(--green, #5ce0b3); }
 .app-shell:not(.app-shell--clear) .incident-report__header h2 { color: var(--ink, #e8f5f1); }
-.app-shell:not(.app-shell--clear) .incident-report__close { border-color: #2b514a; color: var(--muted, #718d88); }
+.app-shell:not(.app-shell--clear) .incident-report__close { border-color: #2b514a; color: var(--ink-soft, #a5c0ba); }
 .app-shell:not(.app-shell--clear) .incident-report__close:hover { border-color: var(--coral); color: var(--coral); }
 .app-shell:not(.app-shell--clear) .incident-report__overview { background: rgba(92, 224, 179, 0.04); border-color: rgba(92, 224, 179, 0.12); }
 .app-shell:not(.app-shell--clear) .incident-report__overview p { color: var(--ink, #e8f5f1); }
-.app-shell:not(.app-shell--clear) .incident-report__section h3 { color: var(--green-dark, #a6f7d8); }
-.app-shell:not(.app-shell--clear) .incident-report__section li { color: var(--ink-soft, #a5c0ba); background: rgba(255, 255, 255, 0.02); }
+.app-shell:not(.app-shell--clear) .incident-report__section h3 { color: var(--green, #5ce0b3); }
+.app-shell:not(.app-shell--clear) .incident-report__section li { color: var(--ink, #e8f5f1); background: rgba(255, 255, 255, 0.04); }
 .app-shell:not(.app-shell--clear) .incident-report__bullet { background: #123b35; color: var(--green-dark, #a6f7d8); }
 .app-shell:not(.app-shell--clear) .incident-report__bullet--action { background: rgba(255, 128, 102, 0.15); color: var(--coral); }
 .app-shell:not(.app-shell--clear) .incident-report__risk-badge { background: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.2); color: #ffd54f; }
-.app-shell:not(.app-shell--clear) .incident-report__section--risk p { color: var(--ink-soft, #a5c0ba); }
+.app-shell:not(.app-shell--clear) .incident-report__section--risk p { color: var(--ink, #e8f5f1); }
 .app-shell:not(.app-shell--clear) .incident-report__section--findings li { border-left-color: var(--green); }
 .app-shell:not(.app-shell--clear) .incident-report__section--actions li { border-left-color: var(--coral); }
-.app-shell:not(.app-shell--clear) .incident-report__footer { border-top-color: var(--line); background: rgba(255, 255, 255, 0.02); }
-.app-shell:not(.app-shell--clear) .incident-report__meta { color: var(--muted, #718d88); }
-.app-shell:not(.app-shell--clear) .incident-report__action { border-color: #2b514a; color: var(--green); }
+.app-shell:not(.app-shell--clear) .incident-report__footer { border-top-color: var(--line); background: rgba(255, 255, 255, 0.04); }
+.app-shell:not(.app-shell--clear) .incident-report__meta { color: var(--ink-soft, #a5c0ba); }
+.app-shell:not(.app-shell--clear) .incident-report__action { border-color: #2b514a; color: var(--green, #5ce0b3); }
 .app-shell:not(.app-shell--clear) .incident-report__action:hover { border-color: var(--green); background: rgba(92, 224, 179, 0.06); }
 .app-shell:not(.app-shell--clear) .incident-loading { border-color: var(--line); background: rgba(16, 34, 32, 0.7); }
 .app-shell:not(.app-shell--clear) .incident-loading__header { color: var(--green-dark, #a6f7d8); }
