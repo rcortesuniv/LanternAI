@@ -6,10 +6,12 @@ import { ChatInput } from "./components/chat/ChatInput";
 import { MessageList } from "./components/chat/MessageList";
 import { QueryHistoryPanel } from "./components/history/QueryHistoryPanel";
 import { OperatorDashboard } from "./components/dashboard/OperatorDashboard";
+import { UserStatistics } from "./components/statistics/UserStatistics";
 import type { ChatTurn } from "./components/chat/types";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"workspace" | "catalog" | "pulse">("workspace");
+  const [theme, setTheme] = useState<"dark" | "clear">("dark");
+  const [activeView, setActiveView] = useState<"workspace" | "catalog" | "pulse" | "statistics">("workspace");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [recentQuestions, setRecentQuestions] = useState<string[]>(() => loadQuestions("lantern-recent-queries"));
   const [savedQuestions, setSavedQuestions] = useState<string[]>(() => loadQuestions("lantern-saved-queries"));
@@ -40,16 +42,19 @@ export default function App() {
   useEffect(() => localStorage.setItem("lantern-saved-queries", JSON.stringify(savedQuestions)), [savedQuestions]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell app-shell--${theme}`}>
       <header className="app-header">
         <div className="brand-lockup">
           <img className="brand-mark" src="/lantern-logo.svg" alt="Lantern AI" />
           <div>
-            <p className="brand-name">Lantern AI</p>
-            <p className="brand-context">Merck data intelligence</p>
+            <p className="brand-name"><span className="brand-company">MSD</span> Lantern AI</p>
+            <p className="brand-context">Security data intelligence</p>
           </div>
         </div>
         <div className="header-meta">
+          <button type="button" className="theme-toggle" onClick={() => setTheme((current) => current === "dark" ? "clear" : "dark")}>
+            <span aria-hidden="true">{theme === "dark" ? "◐" : "◑"}</span> {theme === "dark" ? "Clear mode" : "Dark mode"}
+          </button>
           <button type="button" className="home-button" onClick={() => { setTurns([]); setLiveMessage(""); }}>
             <span aria-hidden="true">←</span> Back to home
           </button>
@@ -63,6 +68,7 @@ export default function App() {
       <nav className="app-tabs" aria-label="Primary navigation">
         <button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => setActiveView("workspace")}>Workspace</button>
         <button type="button" className={activeView === "pulse" ? "is-active" : ""} onClick={() => setActiveView("pulse")}>Pulse</button>
+        <button type="button" className={activeView === "statistics" ? "is-active" : ""} onClick={() => setActiveView("statistics")}>User statistics</button>
         <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => setActiveView("catalog")}>Data catalog <span>16</span></button>
       </nav>
 
@@ -78,7 +84,7 @@ export default function App() {
           />
         </aside>
 
-        {activeView === "catalog" ? <main className="catalog-view" aria-label="Data catalog">
+        {activeView === "statistics" ? <UserStatistics turns={turns} savedQuestions={savedQuestions} /> : activeView === "catalog" ? <main className="catalog-view" aria-label="Data catalog">
           <TableCatalogPanel />
         </main> : activeView === "pulse" ? <main className="pulse-view" aria-label="Workspace pulse">
           <OperatorDashboard turns={turns} />

@@ -33,16 +33,20 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
       <label htmlFor="chat-question" className="sr-only">
         Ask a question about your event data
       </label>
-      <textarea
-        id="chat-question"
-        className="chat-input__textarea"
-        placeholder="Ask a question about your event data..."
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        rows={2}
-      />
+      <div className="chat-input__field">
+        <textarea
+          id="chat-question"
+          className="chat-input__textarea"
+          placeholder="Ask a question about your event data..."
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          rows={2}
+          maxLength={500}
+        />
+        <div className="chat-input__hint"><span>Enter to run</span><span>Shift + Enter for a new line</span><span>{value.length}/500</span></div>
+      </div>
       <button type="submit" className="chat-input__submit" disabled={disabled || !value.trim()} aria-label={disabled ? "Generating query" : "Run query"}>
         <span>{disabled ? "Working" : "Run query"}</span>
         <span className="button-arrow" aria-hidden="true">↗</span>

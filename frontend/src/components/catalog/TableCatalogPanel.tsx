@@ -41,7 +41,7 @@ export function TableCatalogPanel({ compact = false }: { compact?: boolean }) {
       {tables && (
         <ul className="catalog-panel__list">
           {filteredTables.map((table) => (
-            <TableEntry key={table.name} table={table} />
+            <TableEntry key={table.name} table={table} compact={compact} />
           ))}
         </ul>
       )}
@@ -49,7 +49,9 @@ export function TableCatalogPanel({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function TableEntry({ table }: { table: TableSchema }) {
+function TableEntry({ table, compact }: { table: TableSchema; compact: boolean }) {
+  const previewColumns = compact ? table.columns.slice(0, 4) : table.columns;
+
   return (
     <li>
       <details className="catalog-entry">
@@ -74,7 +76,7 @@ function TableEntry({ table }: { table: TableSchema }) {
             </tr>
           </thead>
           <tbody>
-            {table.columns.map((col) => (
+            {previewColumns.map((col) => (
               <tr key={col.name}>
                 <td>
                   <code>{col.name}</code>
@@ -83,6 +85,11 @@ function TableEntry({ table }: { table: TableSchema }) {
                 <td>{col.description}</td>
               </tr>
             ))}
+            {compact && table.columns.length > previewColumns.length && (
+              <tr>
+                <td colSpan={3} className="catalog-entry__more">+ {table.columns.length - previewColumns.length} more in Data catalog</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </details>

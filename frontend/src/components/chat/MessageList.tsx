@@ -14,6 +14,7 @@ export function MessageList({ turns, onAsk }: MessageListProps) {
     return (
       <div className="message-list__empty">
         <div className="empty-state__icon" aria-hidden="true">⌁</div>
+        <p className="empty-state__eyebrow">START AN INVESTIGATION</p>
         <p className="empty-state__title">What would you like to investigate?</p>
         <p className="message-list__empty-hint">Start with a plain-language question. The generated KQL and result set will appear here.</p>
         <div className="prompt-chips" aria-label="Example questions">
