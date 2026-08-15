@@ -55,7 +55,8 @@ export function MessageList({ turns, onAsk }: MessageListProps) {
                   <span>{turn.response.plan.tables?.length ?? 1} source{(turn.response.plan.tables?.length ?? 1) === 1 ? "" : "s"}</span>
                   <span aria-hidden="true">·</span>
                   <span>{turn.response.result.rows.length} row{turn.response.result.rows.length === 1 ? "" : "s"}</span>
-                  {turn.response.diagnostics && <><span aria-hidden="true">·</span><span>{turn.response.diagnostics.cacheHit ? "cached" : `${turn.response.diagnostics.costTier} cost`}</span></>}
+                  {turn.response.metrics && <><span aria-hidden="true">·</span><span>{turn.response.metrics.cacheHit ? "cached" : `${turn.response.metrics.costTier} cost`}</span><span aria-hidden="true">·</span><span>{Math.round(turn.response.metrics.durationMs)} ms</span></>}
+                  {turn.response.diagnostics && !turn.response.metrics && <><span aria-hidden="true">·</span><span>{turn.response.diagnostics.cacheHit ? "cached" : `${turn.response.diagnostics.costTier} cost`}</span></>}
                   <button type="button" className="message-action" onClick={async () => {
                     await navigator.clipboard.writeText(turn.response!.generatedKql);
                     setCopiedTurnId(turn.id);
@@ -63,6 +64,36 @@ export function MessageList({ turns, onAsk }: MessageListProps) {
                   }}>{copiedTurnId === turn.id ? "Copied" : "Copy KQL"}</button>
                   <button type="button" className="message-action" onClick={() => onAsk(turn.question)}>Run again</button>
                 </div>
+                {turn.response.explanation && (
+                  <details className="generated-kql">
+                    <summary>Why this query?</summary>
+                    <p>{turn.response.explanation.summary}</p>
+                    <ul>
+                      {turn.response.explanation.reasons.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                    {turn.response.explanation.warnings.length > 0 && (
+                      <p><strong>Warnings:</strong> {turn.response.explanation.warnings.join(" ")}</p>
+                    )}
+                    {turn.response.explanation.unresolvedAmbiguities.length > 0 && (
+                      <p><strong>Ambiguities:</strong> {turn.response.explanation.unresolvedAmbiguities.join(" ")}</p>
+                    )}
+                  </details>
+                )}
+                {turn.response.metrics && (
+                  <details className="generated-kql">
+                    <summary>Operational metrics</summary>
+                    <ul>
+                      <li>Cost tier: {turn.response.metrics.costTier}</li>
+                      <li>Estimated rows scanned: {turn.response.metrics.estimatedRowsScanned}</li>
+                      <li>Work units: {turn.response.metrics.estimatedWorkUnits}</li>
+                      <li>Prompt tokens: {turn.response.metrics.promptTokens}</li>
+                      <li>Completion tokens: {turn.response.metrics.completionTokens}</li>
+                      <li>Latency: {Math.round(turn.response.metrics.durationMs)} ms</li>
+                    </ul>
+                  </details>
+                )}
                 <details className="generated-kql">
                   <summary>View generated KQL</summary>
                   <pre>
