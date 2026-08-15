@@ -24,7 +24,11 @@ export function MessageList({ turns }: { turns: ChatTurn[] }) {
           </div>
 
           <div className="message message--assistant">
-            {turn.status === "loading" && <p role="status">Generating query&hellip;</p>}
+            {turn.status === "loading" && (
+              <p role="status" className="status-loading">
+                <span className="spinner" aria-hidden="true" /> Generating query&hellip;
+              </p>
+            )}
 
             {turn.status === "error" && (
               <p role="alert" className="error-text">

@@ -44,7 +44,24 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
         rows={2}
       />
       <button type="submit" className="chat-input__submit" disabled={disabled || !value.trim()}>
-        {disabled ? "Thinking…" : "Ask"}
+        {disabled ? (
+          <>
+            <span className="spinner spinner--on-accent" aria-hidden="true" /> Thinking…
+          </>
+        ) : (
+          <>
+            Ask
+            <svg
+              className="chat-input__submit-icon"
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+            >
+              <path fill="currentColor" d="M3 3v4.2l7 .8-7 .8V13l12-5z" />
+            </svg>
+          </>
+        )}
       </button>
     </form>
   );

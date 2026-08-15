@@ -11,7 +11,11 @@ export function TableCatalogPanel() {
         Lantern AI can currently query across all of these simulated event tables.
       </p>
 
-      {isLoading && <p role="status">Loading tables&hellip;</p>}
+      {isLoading && (
+        <p role="status" className="status-loading">
+          <span className="spinner" aria-hidden="true" /> Loading tables&hellip;
+        </p>
+      )}
 
       {isError && (
         <p role="alert" className="error-text">
@@ -37,6 +41,9 @@ function TableEntry({ table }: { table: TableSchema }) {
       <details className="catalog-entry">
         <summary className="catalog-entry__summary">
           <span className="catalog-entry__name">{table.name}</span>
+          <span className="catalog-entry__chevron" aria-hidden="true">
+            ›
+          </span>
         </summary>
         <p className="catalog-entry__description">{table.description}</p>
         <table className="catalog-entry__schema">

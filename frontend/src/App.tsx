@@ -32,10 +32,17 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>🏮 Lantern AI</h1>
-        <p className="app-header__tagline">
-          Ask questions about your event data in plain English — no KQL required.
-        </p>
+        <div className="app-header__brand">
+          <span className="app-header__logo" aria-hidden="true">
+            🏮
+          </span>
+          <div>
+            <h1>Lantern AI</h1>
+            <p className="app-header__tagline">
+              Ask questions about your event data in plain English — no KQL required.
+            </p>
+          </div>
+        </div>
       </header>
 
       <div className="app-body">
