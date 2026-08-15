@@ -20,13 +20,17 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             _ => (StatusCodes.Status500InternalServerError, "Unexpected error", "An unexpected error occurred. Please try again."),
         };
 
+        // Sanitize the request path to prevent log-forging — strip control
+        // characters and newlines that could inject fake log entries.
+        var sanitizedPath = SanitizeLogInput(httpContext.Request.Path.Value);
+
         if (statusCode == StatusCodes.Status500InternalServerError)
         {
-            logger.LogError(exception, "Unhandled exception on {Path}", httpContext.Request.Path);
+            logger.LogError(exception, "Unhandled exception on {Path}", sanitizedPath);
         }
         else
         {
-            logger.LogWarning(exception, "{Title} on {Path}", title, httpContext.Request.Path);
+            logger.LogWarning(exception, "{Title} on {Path}", title, sanitizedPath);
         }
 
         httpContext.Response.StatusCode = statusCode;
@@ -40,5 +44,20 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
         }, cancellationToken);
 
         return true;
+    }
+
+    /// <summary>Removes control characters (including CR/LF) from user-supplied values before logging.</summary>
+    private static string SanitizeLogInput(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        var sb = new System.Text.StringBuilder(value.Length);
+        foreach (var c in value)
+        {
+            if (!char.IsControl(c))
+                sb.Append(c);
+        }
+        return sb.ToString();
     }
 }
