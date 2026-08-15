@@ -23,6 +23,9 @@ public static class MockEventData
     private static readonly string[] Computers = ["APP-SRV-01", "APP-SRV-02", "DB-SRV-01", "WEB-SRV-01", "WEB-SRV-02"];
     private static readonly string[] Activities = ["Logon", "Logoff", "Process Created", "Account Locked", "Privilege Use"];
     private static readonly string[] Endpoints = ["/api/orders", "/api/patients", "/api/inventory", "/api/reports", "/api/auth"];
+    private static readonly string[] Resources = ["ClinicalTrial-API", "Identity-Provider", "DataLake", "ResearchPortal"];
+    private static readonly string[] Databases = ["ClinicalOps", "Analytics", "Inventory", "Identity"];
+    private static readonly string[] DependencyTargets = ["payments.api", "identity.api", "warehouse.api", "clinical-db"];
 
     public static TableSchema SignInLogsSchema { get; } = new(
         "SigninLogs",
@@ -61,8 +64,41 @@ public static class MockEventData
             new ColumnSchema("ClientIP", "string", "Source IP address of the caller."),
         ]);
 
+    public static TableSchema AuditEventsSchema { get; } = new(
+        "AuditEvents",
+        "Application audit trail for actions taken against regulated resources.",
+        [
+            new ColumnSchema("TimeGenerated", "datetime", "When the audit event occurred (UTC)."),
+            new ColumnSchema("UserPrincipalName", "string", "User who performed the action."),
+            new ColumnSchema("Action", "string", "Action performed against the resource."),
+            new ColumnSchema("Resource", "string", "Resource affected by the action."),
+            new ColumnSchema("Outcome", "string", "Whether the action was allowed or denied."),
+        ]);
+
+    public static TableSchema DatabaseQueriesSchema { get; } = new(
+        "DatabaseQueries",
+        "Database query telemetry for operational and analytical workloads.",
+        [
+            new ColumnSchema("TimeGenerated", "datetime", "When the query completed (UTC)."),
+            new ColumnSchema("Database", "string", "Database that processed the query."),
+            new ColumnSchema("QueryType", "string", "Read or write operation."),
+            new ColumnSchema("DurationMs", "real", "Query duration in milliseconds."),
+            new ColumnSchema("Success", "bool", "Whether the database query completed successfully."),
+        ]);
+
+    public static TableSchema ApiDependenciesSchema { get; } = new(
+        "ApiDependencies",
+        "Downstream dependency calls made by application services.",
+        [
+            new ColumnSchema("TimeGenerated", "datetime", "When the dependency call completed (UTC)."),
+            new ColumnSchema("Target", "string", "Downstream service or host called."),
+            new ColumnSchema("DependencyType", "string", "HTTP, database, or queue dependency."),
+            new ColumnSchema("DurationMs", "real", "Dependency call duration in milliseconds."),
+            new ColumnSchema("Success", "bool", "Whether the dependency call succeeded."),
+        ]);
+
     public static IReadOnlyList<TableSchema> AllSchemas { get; } =
-        [SignInLogsSchema, SecurityEventSchema, AppRequestsSchema];
+        [SignInLogsSchema, SecurityEventSchema, AppRequestsSchema, AuditEventsSchema, DatabaseQueriesSchema, ApiDependenciesSchema];
 
     public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateSignInLogs(int count = 25) =>
         Generate(count, rng => new Dictionary<string, object?>
@@ -96,6 +132,36 @@ public static class MockEventData
             ["DurationMs"] = Math.Round(rng.NextDouble() * 800 + 20, 1),
             ["Success"] = rng.NextDouble() < 0.9,
             ["ClientIP"] = RandomIp(rng),
+        });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateAuditEvents(int count = 24) =>
+        Generate(count, rng => new Dictionary<string, object?>
+        {
+            ["TimeGenerated"] = RandomTimestamp(rng),
+            ["UserPrincipalName"] = Pick(rng, Users),
+            ["Action"] = Pick(rng, ["Read", "Export", "Update", "Delete"]),
+            ["Resource"] = Pick(rng, Resources),
+            ["Outcome"] = rng.NextDouble() < 0.92 ? "Allowed" : "Denied",
+        });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDatabaseQueries(int count = 28) =>
+        Generate(count, rng => new Dictionary<string, object?>
+        {
+            ["TimeGenerated"] = RandomTimestamp(rng),
+            ["Database"] = Pick(rng, Databases),
+            ["QueryType"] = Pick(rng, ["Read", "Write"]),
+            ["DurationMs"] = Math.Round(rng.NextDouble() * 1200 + 5, 1),
+            ["Success"] = rng.NextDouble() < 0.96,
+        });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateApiDependencies(int count = 26) =>
+        Generate(count, rng => new Dictionary<string, object?>
+        {
+            ["TimeGenerated"] = RandomTimestamp(rng),
+            ["Target"] = Pick(rng, DependencyTargets),
+            ["DependencyType"] = Pick(rng, ["HTTP", "Database", "Queue"]),
+            ["DurationMs"] = Math.Round(rng.NextDouble() * 500 + 2, 1),
+            ["Success"] = rng.NextDouble() < 0.94,
         });
 
     private static List<IReadOnlyDictionary<string, object?>> Generate(

@@ -1,15 +1,26 @@
+import { useState } from "react";
 import { QueryResultTable } from "./QueryResultTable";
 import type { ChatTurn } from "./types";
 
-export function MessageList({ turns }: { turns: ChatTurn[] }) {
+interface MessageListProps {
+  turns: ChatTurn[];
+  onAsk: (question: string) => void;
+}
+
+export function MessageList({ turns, onAsk }: MessageListProps) {
+  const [copiedTurnId, setCopiedTurnId] = useState<string | null>(null);
+
   if (turns.length === 0) {
     return (
       <div className="message-list__empty">
-        <p>Ask a question about the simulated event data to get started.</p>
-        <p className="message-list__empty-hint">
-          Try: &ldquo;how many failed signins in the last 24 hours?&rdquo; or &ldquo;average request duration by
-          endpoint&rdquo;.
-        </p>
+        <div className="empty-state__icon" aria-hidden="true">⌁</div>
+        <p className="empty-state__title">What would you like to investigate?</p>
+        <p className="message-list__empty-hint">Start with a plain-language question. The generated KQL and result set will appear here.</p>
+        <div className="prompt-chips" aria-label="Example questions">
+          {["Failed sign-ins in the last 24 hours", "Average request duration by endpoint", "Total latency across app, database, and API dependencies", "Recent critical security events"].map((prompt) => (
+            <button key={prompt} type="button" onClick={() => onAsk(prompt)}>{prompt}</button>
+          ))}
+        </div>
       </div>
     );
   }
@@ -27,15 +38,27 @@ export function MessageList({ turns }: { turns: ChatTurn[] }) {
             {turn.status === "loading" && <p role="status">Generating query&hellip;</p>}
 
             {turn.status === "error" && (
-              <p role="alert" className="error-text">
-                <span aria-hidden="true">⚠</span> {turn.errorMessage}
-              </p>
+              <div className="error-state" role="alert">
+                <p className="error-text"><span aria-hidden="true">⚠</span> {turn.errorMessage}</p>
+                <button type="button" className="message-action" onClick={() => onAsk(turn.question)}>Try again</button>
+              </div>
             )}
 
             {turn.status === "success" && turn.response && (
               <>
-                <details className="generated-kql" open>
-                  <summary>Generated KQL</summary>
+                <div className="result-meta">
+                  <span>{turn.response.plan.tables?.length ?? 1} source{(turn.response.plan.tables?.length ?? 1) === 1 ? "" : "s"}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{turn.response.result.rows.length} row{turn.response.result.rows.length === 1 ? "" : "s"}</span>
+                  <button type="button" className="message-action" onClick={async () => {
+                    await navigator.clipboard.writeText(turn.response!.generatedKql);
+                    setCopiedTurnId(turn.id);
+                    window.setTimeout(() => setCopiedTurnId((current) => current === turn.id ? null : current), 1800);
+                  }}>{copiedTurnId === turn.id ? "Copied" : "Copy KQL"}</button>
+                  <button type="button" className="message-action" onClick={() => onAsk(turn.question)}>Run again</button>
+                </div>
+                <details className="generated-kql">
+                  <summary>View generated KQL</summary>
                   <pre>
                     <code>{turn.response.generatedKql}</code>
                   </pre>

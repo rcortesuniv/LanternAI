@@ -10,12 +10,18 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Configuration -----------------------------------------------------
-builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
+builder.Services.AddOptions<OllamaOptions>()
+    .Bind(builder.Configuration.GetSection(OllamaOptions.SectionName))
+    .Validate(options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https", "Ollama:BaseUrl must be an absolute HTTP(S) URL.")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.Model), "Ollama:Model is required.")
+    .Validate(options => options.TimeoutSeconds is >= 1 and <= 300, "Ollama:TimeoutSeconds must be between 1 and 300.")
+    .ValidateOnStart();
 
 // --- Core services -------------------------------------------------------
 builder.Services.AddSingleton<IEventTableCatalog, InMemoryEventTableCatalog>();
 builder.Services.AddSingleton<IQueryExecutor, SimulatedQueryExecutor>();
 builder.Services.AddSingleton<IQueryPlanService, QueryPlanService>();
+builder.Services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ollama", tags: ["ready"]);
 
 // Ollama is the Phase 1 LLM provider. To switch to Gemini once implemented,
 // replace this registration with GeminiLlmProvider — ILlmProvider is the
@@ -62,14 +68,44 @@ builder.Services.AddRateLimiter(options =>
     {
         opt.PermitLimit = 20;
         opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueLimit = 0;
+        opt.QueueLimit = 2;
     });
+    options.OnRejected = async (context, _) =>
+    {
+        context.HttpContext.Response.Headers.RetryAfter = "60";
+        await ValueTask.CompletedTask;
+    };
 });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+app.Use(async (context, next) =>
+{
+    var correlationId = context.Request.Headers.TryGetValue("X-Correlation-ID", out var supplied)
+        && Guid.TryParse(supplied.FirstOrDefault(), out var parsed)
+        ? parsed.ToString()
+        : Guid.NewGuid().ToString();
+    context.TraceIdentifier = correlationId;
+    context.Response.Headers["X-Correlation-ID"] = correlationId;
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.ContentLength is > 16 * 1024)
+    {
+        context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+        await context.Response.WriteAsJsonAsync(new { title = "Request too large", status = 413, detail = "Request payloads must be 16 KB or smaller." });
+        return;
+    }
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
@@ -94,6 +130,15 @@ app.UseRateLimiter();
 
 app.MapTablesEndpoints();
 app.MapQueryEndpoints();
+app.MapCapabilitiesEndpoints();
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false,
+});
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+});
 
 app.Run();
 

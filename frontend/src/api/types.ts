@@ -34,6 +34,7 @@ export interface QueryAggregation {
 
 export interface QueryPlan {
   table: string;
+  tables?: string[];
   columns: string[] | null;
   filters: QueryFilter[];
   timeRange: QueryTimeRange | null;
@@ -58,4 +59,9 @@ export interface ProblemDetails {
   status: number;
   detail?: string;
   errors?: Record<string, string[]>;
+  correlationId?: string;
+}
+
+export interface HealthStatus {
+  ok: boolean;
 }

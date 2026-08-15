@@ -1,17 +1,22 @@
-import { useState } from "react";
-import { useRunQuery } from "./api/hooks";
+import { useEffect, useState } from "react";
+import { useBackendHealth, useRunQuery } from "./api/hooks";
 import { ApiError } from "./api/client";
 import { TableCatalogPanel } from "./components/catalog/TableCatalogPanel";
 import { ChatInput } from "./components/chat/ChatInput";
 import { MessageList } from "./components/chat/MessageList";
+import { QueryHistoryPanel } from "./components/history/QueryHistoryPanel";
 import type { ChatTurn } from "./components/chat/types";
 
 export default function App() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [recentQuestions, setRecentQuestions] = useState<string[]>(() => loadQuestions("lantern-recent-queries"));
+  const [savedQuestions, setSavedQuestions] = useState<string[]>(() => loadQuestions("lantern-saved-queries"));
   const [liveMessage, setLiveMessage] = useState("");
   const runQuery = useRunQuery();
+  const backendHealth = useBackendHealth();
 
   const handleAsk = (question: string) => {
+    setRecentQuestions((current) => [question, ...current.filter((item) => item !== question)].slice(0, 8));
     const id = crypto.randomUUID();
     setTurns((prev) => [...prev, { id, question, status: "loading" }]);
     setLiveMessage("Generating query…");
@@ -29,21 +34,59 @@ export default function App() {
     });
   };
 
+  useEffect(() => localStorage.setItem("lantern-recent-queries", JSON.stringify(recentQuestions)), [recentQuestions]);
+  useEffect(() => localStorage.setItem("lantern-saved-queries", JSON.stringify(savedQuestions)), [savedQuestions]);
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>🏮 Lantern AI</h1>
-        <p className="app-header__tagline">
-          Ask questions about your event data in plain English — no KQL required.
-        </p>
+        <div className="brand-lockup">
+          <img className="brand-mark" src="/lantern-logo.svg" alt="Lantern AI" />
+          <div>
+            <p className="brand-name">Lantern AI</p>
+            <p className="brand-context">Merck data intelligence</p>
+          </div>
+        </div>
+        <div className="header-meta">
+          <button type="button" className="home-button" onClick={() => { setTurns([]); setLiveMessage(""); }}>
+            <span aria-hidden="true">←</span> Back to home
+          </button>
+          <span className={`environment-pill environment-pill--${backendHealth.isError ? "offline" : "online"}`}>
+            <span className="status-dot" aria-hidden="true" /> {backendHealth.isError ? "Backend offline" : "Backend ready"}
+          </span>
+          <span className="header-meta__version">Workspace 01</span>
+        </div>
       </header>
 
       <div className="app-body">
-        <TableCatalogPanel />
+        <aside className="workspace-sidebar">
+          <TableCatalogPanel />
+          <QueryHistoryPanel
+            recentQuestions={recentQuestions}
+            savedQuestions={savedQuestions}
+            onAsk={handleAsk}
+            onToggleSaved={(question) => setSavedQuestions((current) => current.includes(question) ? current.filter((item) => item !== question) : [question, ...current].slice(0, 8))}
+            onClearRecent={() => setRecentQuestions([])}
+          />
+        </aside>
 
         <main className="chat-panel" aria-label="Query chat">
+          <section className="workspace-intro">
+            <div>
+              <p className="eyebrow">EVENT INTELLIGENCE / NATURAL LANGUAGE</p>
+              <h1>Make your event data answerable.</h1>
+              <p className="workspace-intro__copy">
+                Explore signals across your operational tables with a question. Lantern translates intent into a precise query and returns the evidence behind it.
+              </p>
+            </div>
+            <div className="workspace-intro__metric" aria-label="Available data sources">
+              <span className="metric-label">DATA SOURCES</span>
+              <strong>LIVE</strong>
+              <span>catalog connected</span>
+            </div>
+          </section>
           <div className="chat-panel__messages">
-            <MessageList turns={turns} />
+            <MessageList turns={turns} onAsk={handleAsk} />
           </div>
           <ChatInput onSubmit={handleAsk} disabled={runQuery.isPending} />
         </main>
@@ -55,4 +98,13 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+function loadQuestions(key: string): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 8) : [];
+  } catch {
+    return [];
+  }
 }

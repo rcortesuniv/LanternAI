@@ -1,0 +1,13 @@
+<svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Lantern AI logo</title>
+  <desc id="desc">A modern green lantern symbol with a coral light and signal beams.</desc>
+  <rect x="1" y="1" width="50" height="50" rx="16" fill="#DCECE4"/>
+  <path d="M26 8V12" stroke="#006B5B" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M20 13.5H32" stroke="#006B5B" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M18 19H34L36.5 37H15.5L18 19Z" fill="#006B5B"/>
+  <path d="M21 23H31L32.2 33H19.8L21 23Z" fill="#F2684D"/>
+  <path d="M17 19H35" stroke="#004F45" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M16 39.5H36" stroke="#006B5B" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M11 17L14 19M41 17L38 19" stroke="#F2684D" stroke-width="2" stroke-linecap="round"/>
+  <rect x="1" y="1" width="50" height="50" rx="16" stroke="#85D0B8" stroke-width="2"/>
+</svg>

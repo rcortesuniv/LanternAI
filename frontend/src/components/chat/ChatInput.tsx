@@ -36,15 +36,16 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
       <textarea
         id="chat-question"
         className="chat-input__textarea"
-        placeholder="Ask about your event data, e.g. “how many failed signins in the last 24 hours?”"
+        placeholder="Ask a question about your event data..."
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={disabled}
         rows={2}
       />
-      <button type="submit" className="chat-input__submit" disabled={disabled || !value.trim()}>
-        {disabled ? "Thinking…" : "Ask"}
+      <button type="submit" className="chat-input__submit" disabled={disabled || !value.trim()} aria-label={disabled ? "Generating query" : "Run query"}>
+        <span>{disabled ? "Working" : "Run query"}</span>
+        <span className="button-arrow" aria-hidden="true">↗</span>
       </button>
     </form>
   );

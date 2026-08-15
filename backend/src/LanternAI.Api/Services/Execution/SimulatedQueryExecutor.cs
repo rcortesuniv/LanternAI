@@ -15,10 +15,11 @@ public sealed class SimulatedQueryExecutor(IEventTableCatalog catalog) : IQueryE
 {
     public QueryResult Execute(QueryPlan plan)
     {
+        var sourceTables = plan.Tables is { Count: > 0 } ? plan.Tables : [plan.Table];
         var table = catalog.GetTable(plan.Table)
             ?? throw new InvalidOperationException($"Table '{plan.Table}' was validated but no longer exists in the catalog.");
 
-        IEnumerable<IReadOnlyDictionary<string, object?>> rows = catalog.GetRows(plan.Table);
+        IEnumerable<IReadOnlyDictionary<string, object?>> rows = sourceTables.SelectMany(catalog.GetRows);
 
         if (plan.TimeRange is { } timeRange)
         {

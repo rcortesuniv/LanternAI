@@ -106,4 +106,20 @@ public class SimulatedQueryExecutorTests
 
         Assert.Equal(2, result.Rows.Count);
     }
+
+    [Fact]
+    public void Execute_MultipleSources_AggregatesRowsAcrossSources()
+    {
+        var plan = new QueryPlan
+        {
+            Table = "TestEvents",
+            Tables = ["TestEvents", "TestEvents"],
+            Aggregation = new QueryAggregation(AggregationFunction.Count, null, ["Category"]),
+        };
+
+        var result = _executor.Execute(plan);
+
+        Assert.Contains(result.Rows, r => (string?)r["Category"] == "alpha" && (int)r["Count"]! == 6);
+        Assert.Contains(result.Rows, r => (string?)r["Category"] == "beta" && (int)r["Count"]! == 2);
+    }
 }

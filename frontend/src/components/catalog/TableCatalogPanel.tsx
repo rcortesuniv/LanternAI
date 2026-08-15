@@ -1,15 +1,29 @@
 import { useTables } from "../../api/hooks";
 import type { TableSchema } from "../../api/types";
+import { useState } from "react";
 
 export function TableCatalogPanel() {
+  const [search, setSearch] = useState("");
   const { data: tables, isLoading, isError, error } = useTables();
+  const filteredTables = tables?.filter((table) => `${table.name} ${table.description}`.toLowerCase().includes(search.toLowerCase())) ?? [];
 
   return (
     <aside className="catalog-panel" aria-labelledby="catalog-heading">
-      <h2 id="catalog-heading">Available tables</h2>
+      <div className="catalog-panel__header">
+        <div>
+          <p className="eyebrow">DATA CATALOG</p>
+          <h2 id="catalog-heading">Available tables</h2>
+        </div>
+        <span className="catalog-count">{tables?.length ?? "--"}</span>
+      </div>
       <p className="catalog-panel__hint">
         Lantern AI can currently query across all of these simulated event tables.
       </p>
+      <label className="catalog-search">
+        <span className="sr-only">Filter data sources</span>
+        <span aria-hidden="true">⌕</span>
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter sources" />
+      </label>
 
       {isLoading && <p role="status">Loading tables&hellip;</p>}
 
@@ -22,7 +36,7 @@ export function TableCatalogPanel() {
 
       {tables && (
         <ul className="catalog-panel__list">
-          {tables.map((table) => (
+          {filteredTables.map((table) => (
             <TableEntry key={table.name} table={table} />
           ))}
         </ul>

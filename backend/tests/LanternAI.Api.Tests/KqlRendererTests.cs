@@ -43,4 +43,20 @@ public class KqlRendererTests
 
         Assert.Equal("AppRequests\n| summarize avg(DurationMs) by Name\n| take 100", kql);
     }
+
+    [Fact]
+    public void Render_MultipleSources_UsesUnionBeforeAggregation()
+    {
+        var plan = new QueryPlan
+        {
+            Table = "AppRequests",
+            Tables = ["AppRequests", "DatabaseQueries", "ApiDependencies"],
+            Aggregation = new QueryAggregation(AggregationFunction.Sum, "DurationMs", null),
+            Limit = 100,
+        };
+
+        var kql = KqlRenderer.Render(plan);
+
+        Assert.Equal("union AppRequests, DatabaseQueries, ApiDependencies\n| summarize sum(DurationMs)\n| take 100", kql);
+    }
 }

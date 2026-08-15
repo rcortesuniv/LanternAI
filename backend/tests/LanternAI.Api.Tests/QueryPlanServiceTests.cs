@@ -1,4 +1,6 @@
 using LanternAI.Api.Services.QueryPlanning;
+using LanternAI.Api.Services.Catalog;
+using LanternAI.Api.Models;
 using LanternAI.Api.Tests.TestDoubles;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -81,5 +83,18 @@ public class QueryPlanServiceTests
 
         await Assert.ThrowsAsync<InvalidQueryPlanException>(() => service.BuildPlanAsync("   "));
         Assert.Null(llm.LastUserPrompt);
+    }
+
+    [Fact]
+    public async Task BuildPlanAsync_MultipleSources_ValidatesSharedAggregationColumns()
+    {
+        var llm = new FakeLlmProvider("""{"table":"AppRequests","tables":["AppRequests","DatabaseQueries","ApiDependencies"],"aggregation":{"function":"Sum","column":"DurationMs"}}""");
+        var service = new QueryPlanService(llm, new InMemoryEventTableCatalog(), NullLogger<QueryPlanService>.Instance);
+
+        var plan = await service.BuildPlanAsync("total duration across application telemetry");
+
+        Assert.Equal(["AppRequests", "DatabaseQueries", "ApiDependencies"], plan.Tables);
+        Assert.Equal(AggregationFunction.Sum, plan.Aggregation!.Function);
+        Assert.Equal("DurationMs", plan.Aggregation.Column);
     }
 }

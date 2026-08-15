@@ -53,9 +53,10 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
             Available tables:
             {{string.Join("\n", tableDescriptions)}}
 
-            JSON shape (omit fields you don't need):
+                        JSON shape (omit fields you don't need):
             {
               "table": "<one of the table names above>",
+                            "tables": ["<one or more table names to union for cross-source analysis>"],
               "columns": ["<column names to return, or omit for all columns>"],
               "filters": [{"column": "<name>", "operator": "Equals|NotEquals|Contains|GreaterThan|LessThan", "value": "<string>"}],
               "timeRange": {"column": "<a datetime column>", "lookbackHours": <number>},
@@ -65,7 +66,11 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
 
             Rules:
             - Only use table and column names exactly as listed above.
-            - "table" is required; every other field is optional.
+            - "table" is required and is the primary source; use "tables" when the question asks to combine sources.
+            - Cross-source plans are unioned before filtering and aggregation. Only use columns shared by every selected table.
+                        - Always return a JSON object with a non-empty "table", even when the question is ambiguous.
+                        - Example cross-source request: "total duration across app requests, database queries, and API dependencies"
+                            -> table=AppRequests; tables=AppRequests,DatabaseQueries,ApiDependencies; aggregation=Sum(DurationMs)
             - If the question doesn't map to any table, still pick the closest table —
               validation on our side will reject anything unusable.
             """;
@@ -104,18 +109,21 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
 
     private QueryPlan Validate(RawPlan raw)
     {
-        var table = catalog.GetTable(raw.Table)
-            ?? throw new InvalidQueryPlanException($"Unknown table '{raw.Table}'.");
+        var sourceNames = (raw.Tables is { Count: > 0 } ? raw.Tables : [raw.Table]).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var sourceTables = sourceNames.Select(name => catalog.GetTable(name)
+            ?? throw new InvalidQueryPlanException($"Unknown table '{name}'.")).ToList();
+        var table = sourceTables[0];
 
-        var columns = raw.Columns?.Count > 0 ? ValidateColumns(table, raw.Columns) : null;
-        var filters = (raw.Filters ?? []).Select(f => ValidateFilter(table, f)).ToList();
-        var timeRange = raw.TimeRange is null ? null : ValidateTimeRange(table, raw.TimeRange);
-        var aggregation = raw.Aggregation is null ? null : ValidateAggregation(table, raw.Aggregation);
+        var columns = raw.Columns?.Count > 0 ? ValidateSharedColumns(sourceTables, raw.Columns) : null;
+        var filters = (raw.Filters ?? []).Select(f => ValidateSharedFilter(sourceTables, f)).ToList();
+        var timeRange = raw.TimeRange is null ? null : ValidateSharedTimeRange(sourceTables, raw.TimeRange);
+        var aggregation = raw.Aggregation is null ? null : ValidateSharedAggregation(sourceTables, raw.Aggregation);
         var limit = Math.Clamp(raw.Limit ?? DefaultLimit, 1, MaxLimit);
 
         return new QueryPlan
         {
             Table = table.Name,
+            Tables = sourceNames.Count > 1 ? sourceTables.Select(t => t.Name).ToList() : null,
             Columns = columns,
             Filters = filters,
             TimeRange = timeRange,
@@ -134,6 +142,20 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
             result.Add(column.Name);
         }
         return result;
+    }
+
+    private static List<string> ValidateSharedColumns(IReadOnlyList<TableSchema> tables, IEnumerable<string> columns) =>
+        columns.Select(column => tables.Select(table => table.FindColumn(column)
+            ?? throw new InvalidQueryPlanException($"Unknown shared column '{column}'.")).First().Name).ToList();
+
+    private static QueryFilter ValidateSharedFilter(IReadOnlyList<TableSchema> tables, RawFilter filter)
+    {
+        var column = ValidateSharedColumns(tables, [filter.Column]).Single();
+        if (!Enum.TryParse<FilterOperator>(filter.Operator, ignoreCase: true, out var op))
+        {
+            throw new InvalidQueryPlanException($"Unknown filter operator '{filter.Operator}'.");
+        }
+        return new QueryFilter(column, op, filter.Value);
     }
 
     private static QueryFilter ValidateFilter(TableSchema table, RawFilter filter)
@@ -158,6 +180,16 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         return new QueryTimeRange(column.Name, timeRange.LookbackHours);
     }
 
+    private static QueryTimeRange ValidateSharedTimeRange(IReadOnlyList<TableSchema> tables, RawTimeRange timeRange)
+    {
+        var column = ValidateSharedColumns(tables, [timeRange.Column]).Single();
+        if (timeRange.LookbackHours <= 0)
+        {
+            throw new InvalidQueryPlanException("timeRange.lookbackHours must be positive.");
+        }
+        return new QueryTimeRange(column, timeRange.LookbackHours);
+    }
+
     private static QueryAggregation ValidateAggregation(TableSchema table, RawAggregation aggregation)
     {
         if (!Enum.TryParse<AggregationFunction>(aggregation.Function, ignoreCase: true, out var function))
@@ -176,8 +208,26 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         return new QueryAggregation(function, column, groupBy);
     }
 
+    private static QueryAggregation ValidateSharedAggregation(IReadOnlyList<TableSchema> tables, RawAggregation aggregation)
+    {
+        if (!Enum.TryParse<AggregationFunction>(aggregation.Function, ignoreCase: true, out var function))
+        {
+            throw new InvalidQueryPlanException($"Unknown aggregation function '{aggregation.Function}'.");
+        }
+
+        string? column = null;
+        if (function != AggregationFunction.Count)
+        {
+            column = ValidateSharedColumns(tables, [aggregation.Column ?? string.Empty]).Single();
+        }
+
+        var groupBy = aggregation.GroupBy?.Count > 0 ? ValidateSharedColumns(tables, aggregation.GroupBy) : null;
+        return new QueryAggregation(function, column, groupBy);
+    }
+
     private sealed record RawPlan(
         string Table,
+        List<string>? Tables,
         List<string>? Columns,
         List<RawFilter>? Filters,
         RawTimeRange? TimeRange,

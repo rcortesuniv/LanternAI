@@ -27,7 +27,13 @@ prompting layers don't.
   (`Cors:AllowedOrigins`) may call the API — no wildcard.
 - **Rate limiting**: `/api/query` (the one endpoint that triggers LLM
   inference) is capped via a fixed-window limiter (`RateLimiting.QueryPolicy`
-  in `Program.cs`) to blunt trivial abuse/cost runaway.
+  in `Program.cs`) with a bounded queue and `Retry-After` guidance to blunt
+  trivial abuse/cost runaway.
+- **Operational hardening**: `/health/live` and `/health/ready` probes are
+  available for orchestration; readiness checks the configured Ollama service.
+  Requests receive a correlation ID, secure response headers, a 16 KB payload
+  limit, and structured query-duration/row-count logs without logging question
+  content.
 - **No secrets in source**: Ollama base URL/model come from configuration,
   overridable via environment variables; nothing is hardcoded.
 - **Clean error responses**: `ApiExceptionHandler` maps known failure modes
@@ -81,3 +87,5 @@ concept and are called out here so they aren't mistaken for "done":
 - [ ] Automated accessibility testing (axe) in CI, not just manual checks.
 - [ ] Load/rate-limit tuning based on real usage, not the current
       placeholder limiter values.
+- [ ] Export correlation/audit events to a centralized sink with retention and
+  access controls.

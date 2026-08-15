@@ -12,6 +12,9 @@ public sealed record QueryPlan
 {
     public required string Table { get; init; }
 
+    /// <summary>Additional tables to union with the primary table before execution.</summary>
+    public IReadOnlyList<string>? Tables { get; init; }
+
     /// <summary>Columns to project. Empty/null means "all columns".</summary>
     public IReadOnlyList<string>? Columns { get; init; }
 

@@ -21,6 +21,9 @@ public sealed class InMemoryEventTableCatalog : IEventTableCatalog
             [MockEventData.SignInLogsSchema.Name] = MockEventData.GenerateSignInLogs(),
             [MockEventData.SecurityEventSchema.Name] = MockEventData.GenerateSecurityEvents(),
             [MockEventData.AppRequestsSchema.Name] = MockEventData.GenerateAppRequests(),
+            [MockEventData.AuditEventsSchema.Name] = MockEventData.GenerateAuditEvents(),
+            [MockEventData.DatabaseQueriesSchema.Name] = MockEventData.GenerateDatabaseQueries(),
+            [MockEventData.ApiDependenciesSchema.Name] = MockEventData.GenerateApiDependencies(),
         };
     }
 

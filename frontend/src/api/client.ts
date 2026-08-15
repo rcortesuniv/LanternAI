@@ -1,4 +1,4 @@
-import type { ProblemDetails, QueryResponse, TableSchema } from "./types";
+import type { HealthStatus, ProblemDetails, QueryResponse, TableSchema } from "./types";
 
 /**
  * In GitHub Codespaces (and VS Code's forwarded-port URLs generally), the
@@ -28,34 +28,51 @@ const BASE_URL = resolveApiBaseUrl();
 /** Error carrying the backend's ProblemDetails so the UI can show a specific, non-leaky message. */
 export class ApiError extends Error {
   status: number;
+  correlationId?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, correlationId?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.correlationId = correlationId;
   }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 75_000);
+  const correlationId = crypto.randomUUID();
 
-  if (!response.ok) {
-    const problem: ProblemDetails | null = await response.json().catch(() => null);
-    const message =
-      problem?.errors && Object.values(problem.errors).flat()[0]
-        ? Object.values(problem.errors).flat()[0]
-        : (problem?.detail ?? problem?.title ?? `Request failed with status ${response.status}.`);
-    throw new ApiError(message, response.status);
+  try {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      signal: init?.signal ?? controller.signal,
+      headers: { "Content-Type": "application/json", "X-Correlation-ID": correlationId, ...init?.headers },
+    });
+
+    if (!response.ok) {
+      const problem: ProblemDetails | null = await response.json().catch(() => null);
+      const message =
+        problem?.errors && Object.values(problem.errors).flat()[0]
+          ? Object.values(problem.errors).flat()[0]
+          : (problem?.detail ?? problem?.title ?? `Request failed with status ${response.status}.`);
+      throw new ApiError(message, response.status, problem?.correlationId ?? response.headers.get("X-Correlation-ID") ?? undefined);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError("The request timed out. The local model may still be warming up.", 408, correlationId);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-
-  return (await response.json()) as T;
 }
 
 export const api = {
   listTables: () => request<TableSchema[]>("/api/tables"),
+  checkHealth: () => request<HealthStatus>("/health/ready").then(() => ({ ok: true })),
   runQuery: (question: string) =>
     request<QueryResponse>("/api/query", {
       method: "POST",

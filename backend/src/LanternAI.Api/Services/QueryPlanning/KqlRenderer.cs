@@ -14,7 +14,8 @@ public static class KqlRenderer
 {
     public static string Render(QueryPlan plan)
     {
-        var sb = new StringBuilder(plan.Table);
+        var sourceTables = plan.Tables is { Count: > 0 } ? plan.Tables : [plan.Table];
+        var sb = new StringBuilder(sourceTables.Count == 1 ? sourceTables[0] : $"union {string.Join(", ", sourceTables)}");
 
         if (plan.TimeRange is { } timeRange)
         {

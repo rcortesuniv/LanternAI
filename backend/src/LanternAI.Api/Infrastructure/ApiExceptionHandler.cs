@@ -36,6 +36,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             title,
             status = statusCode,
             detail,
+            correlationId = httpContext.TraceIdentifier,
         }, cancellationToken);
 
         return true;
