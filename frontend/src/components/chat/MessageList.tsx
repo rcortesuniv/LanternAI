@@ -35,7 +35,11 @@ export function MessageList({ turns, onAsk }: MessageListProps) {
           </div>
 
           <div className="message message--assistant">
-            {turn.status === "loading" && <p role="status">Generating query&hellip;</p>}
+            {turn.status === "loading" && (
+              <p role="status" className="status-loading">
+                <span className="spinner" aria-hidden="true" /> Generating query&hellip;
+              </p>
+            )}
 
             {turn.status === "error" && (
               <div className="error-state" role="alert">
