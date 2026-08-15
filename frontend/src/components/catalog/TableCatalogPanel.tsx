@@ -2,13 +2,13 @@ import { useTables } from "../../api/hooks";
 import type { TableSchema } from "../../api/types";
 import { useState } from "react";
 
-export function TableCatalogPanel() {
+export function TableCatalogPanel({ compact = false }: { compact?: boolean }) {
   const [search, setSearch] = useState("");
   const { data: tables, isLoading, isError, error } = useTables();
   const filteredTables = tables?.filter((table) => `${table.name} ${table.description}`.toLowerCase().includes(search.toLowerCase())) ?? [];
 
   return (
-    <aside className="catalog-panel" aria-labelledby="catalog-heading">
+    <aside className={`catalog-panel ${compact ? "catalog-panel--compact" : ""}`} aria-labelledby="catalog-heading">
       <div className="catalog-panel__header">
         <div>
           <p className="eyebrow">DATA CATALOG</p>
@@ -16,8 +16,8 @@ export function TableCatalogPanel() {
         </div>
         <span className="catalog-count">{tables?.length ?? "--"}</span>
       </div>
-      <p className="catalog-panel__hint">
-        Lantern AI can currently query across all of these simulated event tables.
+        <p className="catalog-panel__hint">
+        Security telemetry across identity, access, audit, workloads, and network controls.
       </p>
       <label className="catalog-search">
         <span className="sr-only">Filter data sources</span>
@@ -60,6 +60,10 @@ function TableEntry({ table }: { table: TableSchema }) {
           </span>
         </summary>
         <p className="catalog-entry__description">{table.description}</p>
+        <div className="catalog-entry__stats">
+          <span>{table.rowCount?.toLocaleString() ?? "—"} sample rows</span>
+          <span>{table.columns.length} columns</span>
+        </div>
         <table className="catalog-entry__schema">
           <caption className="sr-only">Columns in {table.name}</caption>
           <thead>

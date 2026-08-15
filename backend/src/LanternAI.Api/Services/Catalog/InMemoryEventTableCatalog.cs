@@ -24,10 +24,22 @@ public sealed class InMemoryEventTableCatalog : IEventTableCatalog
             [MockEventData.AuditEventsSchema.Name] = MockEventData.GenerateAuditEvents(),
             [MockEventData.DatabaseQueriesSchema.Name] = MockEventData.GenerateDatabaseQueries(),
             [MockEventData.ApiDependenciesSchema.Name] = MockEventData.GenerateApiDependencies(),
+            [MockEventData.DeploymentEventsSchema.Name] = MockEventData.GenerateDeploymentEvents(),
+            [MockEventData.ServiceHealthSchema.Name] = MockEventData.GenerateServiceHealth(),
+            [MockEventData.QueueMessagesSchema.Name] = MockEventData.GenerateQueueMessages(),
+            [MockEventData.ContainerLogsSchema.Name] = MockEventData.GenerateContainerLogs(),
+            [MockEventData.FeatureFlagsSchema.Name] = MockEventData.GenerateFeatureFlags(),
+            [MockEventData.UserSessionsSchema.Name] = MockEventData.GenerateUserSessions(),
+            [MockEventData.DataExportsSchema.Name] = MockEventData.GenerateDataExports(),
+            [MockEventData.ApiErrorsSchema.Name] = MockEventData.GenerateApiErrors(),
+            [MockEventData.JobRunsSchema.Name] = MockEventData.GenerateJobRuns(),
+            [MockEventData.NetworkConnectionsSchema.Name] = MockEventData.GenerateNetworkConnections(),
         };
     }
 
-    public IReadOnlyList<TableSchema> GetTables() => _schemasByName.Values.ToList();
+    public IReadOnlyList<TableSchema> GetTables() => _schemasByName.Values
+        .Select(schema => schema with { RowCount = _rowsByName.GetValueOrDefault(schema.Name)?.Count ?? 0 })
+        .ToList();
 
     public TableSchema? GetTable(string name) => _schemasByName.GetValueOrDefault(name);
 

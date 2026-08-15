@@ -10,6 +10,7 @@ export interface TableSchema {
   name: string;
   description: string;
   columns: ColumnSchema[];
+  rowCount?: number;
 }
 
 export type FilterOperator = "Equals" | "NotEquals" | "Contains" | "GreaterThan" | "LessThan";

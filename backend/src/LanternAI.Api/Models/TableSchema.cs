@@ -9,6 +9,8 @@ namespace LanternAI.Api.Models;
 /// </summary>
 public sealed record TableSchema(string Name, string Description, IReadOnlyList<ColumnSchema> Columns)
 {
+    public int? RowCount { get; init; }
+
     public ColumnSchema? FindColumn(string name) =>
         Columns.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
 }

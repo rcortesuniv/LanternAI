@@ -26,6 +26,10 @@ public static class MockEventData
     private static readonly string[] Resources = ["ClinicalTrial-API", "Identity-Provider", "DataLake", "ResearchPortal"];
     private static readonly string[] Databases = ["ClinicalOps", "Analytics", "Inventory", "Identity"];
     private static readonly string[] DependencyTargets = ["payments.api", "identity.api", "warehouse.api", "clinical-db"];
+    private static readonly string[] Services = ["identity", "orders", "research", "inventory", "reporting"];
+    private static readonly string[] Regions = ["eastus", "westeurope", "southeastasia", "uksouth"];
+    private static readonly string[] Queues = ["clinical-events", "audit-events", "notifications", "data-export"];
+    private static readonly string[] JobNames = ["NightlyIngest", "TrialMetrics", "ComplianceExport", "IndexRefresh"];
 
     public static TableSchema SignInLogsSchema { get; } = new(
         "SigninLogs",
@@ -54,7 +58,7 @@ public static class MockEventData
 
     public static TableSchema AppRequestsSchema { get; } = new(
         "AppRequests",
-        "Application request telemetry: endpoint, response time, and outcome for each HTTP request.",
+        "Application security gateway telemetry: endpoint access, response time, and authorization outcome for each HTTP request.",
         [
             new ColumnSchema("TimeGenerated", "datetime", "When the request was received (UTC)."),
             new ColumnSchema("Name", "string", "Endpoint/route that handled the request."),
@@ -77,7 +81,7 @@ public static class MockEventData
 
     public static TableSchema DatabaseQueriesSchema { get; } = new(
         "DatabaseQueries",
-        "Database query telemetry for operational and analytical workloads.",
+        "Database security audit telemetry for protected operational and analytical workloads.",
         [
             new ColumnSchema("TimeGenerated", "datetime", "When the query completed (UTC)."),
             new ColumnSchema("Database", "string", "Database that processed the query."),
@@ -88,7 +92,7 @@ public static class MockEventData
 
     public static TableSchema ApiDependenciesSchema { get; } = new(
         "ApiDependencies",
-        "Downstream dependency calls made by application services.",
+        "Security telemetry for downstream dependency calls, trust boundaries, and service-to-service access.",
         [
             new ColumnSchema("TimeGenerated", "datetime", "When the dependency call completed (UTC)."),
             new ColumnSchema("Target", "string", "Downstream service or host called."),
@@ -97,8 +101,29 @@ public static class MockEventData
             new ColumnSchema("Success", "bool", "Whether the dependency call succeeded."),
         ]);
 
+    public static TableSchema DeploymentEventsSchema { get; } = new("DeploymentEvents", "Security deployment history for releases, environments, and production change controls.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the deployment completed (UTC)."), new ColumnSchema("Service", "string", "Service being deployed."), new ColumnSchema("Environment", "string", "Target environment."), new ColumnSchema("Version", "string", "Released application version."), new ColumnSchema("Status", "string", "Deployment outcome.")]);
+    public static TableSchema ServiceHealthSchema { get; } = new("ServiceHealth", "Security health checks for platform services, regions, and protected workloads.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the health check ran (UTC)."), new ColumnSchema("Service", "string", "Service being checked."), new ColumnSchema("Region", "string", "Cloud region of the check."), new ColumnSchema("LatencyMs", "real", "Observed check latency."), new ColumnSchema("Healthy", "bool", "Whether the service passed the check.")]);
+    public static TableSchema QueueMessagesSchema { get; } = new("QueueMessages", "Security telemetry for asynchronous message processing, dead letters, and trusted queues.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the message was processed (UTC)."), new ColumnSchema("QueueName", "string", "Queue that carried the message."), new ColumnSchema("MessageType", "string", "Logical message type."), new ColumnSchema("ProcessingMs", "real", "Message processing duration."), new ColumnSchema("DeadLettered", "bool", "Whether processing moved to dead letter.")]);
+    public static TableSchema ContainerLogsSchema { get; } = new("ContainerLogs", "Container security logs for workload behavior, warnings, failures, and runtime regions.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the log was emitted (UTC)."), new ColumnSchema("Service", "string", "Container service name."), new ColumnSchema("Level", "string", "Log severity."), new ColumnSchema("Message", "string", "Log message text."), new ColumnSchema("Region", "string", "Container region.")]);
+    public static TableSchema FeatureFlagsSchema { get; } = new("FeatureFlags", "Security feature-flag evaluations for adaptive access, controlled rollouts, and experiments.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the flag was evaluated (UTC)."), new ColumnSchema("FlagName", "string", "Feature flag identifier."), new ColumnSchema("UserPrincipalName", "string", "User receiving the evaluation."), new ColumnSchema("Enabled", "bool", "Whether the feature was enabled."), new ColumnSchema("Variant", "string", "Selected experiment variant.")]);
+    public static TableSchema UserSessionsSchema { get; } = new("UserSessions", "User access-session lifecycle telemetry for authentication, duration, and termination analysis.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the session event occurred (UTC)."), new ColumnSchema("UserPrincipalName", "string", "User associated with the session."), new ColumnSchema("SessionId", "string", "Session identifier."), new ColumnSchema("DurationMin", "real", "Session duration in minutes."), new ColumnSchema("Terminated", "bool", "Whether the session ended normally.")]);
+    public static TableSchema DataExportsSchema { get; } = new("DataExports", "Governed security and compliance export jobs for regulated reporting workflows.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the export completed (UTC)."), new ColumnSchema("ExportName", "string", "Export job name."), new ColumnSchema("RequestedBy", "string", "User who requested the export."), new ColumnSchema("RowsExported", "int", "Number of rows written."), new ColumnSchema("Status", "string", "Export outcome.")]);
+    public static TableSchema ApiErrorsSchema { get; } = new("ApiErrors", "Security-relevant API failures, authorization errors, abuse signals, and correlation context.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the error occurred (UTC)."), new ColumnSchema("Route", "string", "API route that failed."), new ColumnSchema("StatusCode", "int", "HTTP status code."), new ColumnSchema("ErrorType", "string", "Normalized error category."), new ColumnSchema("Service", "string", "Service that returned the error.")]);
+    public static TableSchema JobRunsSchema { get; } = new("JobRuns", "Security and compliance job execution history for scans, policy checks, and evidence collection.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the job completed (UTC)."), new ColumnSchema("JobName", "string", "Background job name."), new ColumnSchema("DurationMs", "real", "Job duration."), new ColumnSchema("Succeeded", "bool", "Whether the job completed successfully."), new ColumnSchema("ItemsProcessed", "int", "Items processed by the job.")]);
+    public static TableSchema NetworkConnectionsSchema { get; } = new("NetworkConnections", "Network security connection telemetry between application workloads and protected destinations.", [
+        new ColumnSchema("TimeGenerated", "datetime", "When the connection was observed (UTC)."), new ColumnSchema("SourceService", "string", "Originating service."), new ColumnSchema("Destination", "string", "Destination host or service."), new ColumnSchema("Port", "int", "Destination port."), new ColumnSchema("Allowed", "bool", "Whether the connection was allowed.")]);
+
     public static IReadOnlyList<TableSchema> AllSchemas { get; } =
-        [SignInLogsSchema, SecurityEventSchema, AppRequestsSchema, AuditEventsSchema, DatabaseQueriesSchema, ApiDependenciesSchema];
+        [SignInLogsSchema, SecurityEventSchema, AppRequestsSchema, AuditEventsSchema, DatabaseQueriesSchema, ApiDependenciesSchema, DeploymentEventsSchema, ServiceHealthSchema, QueueMessagesSchema, ContainerLogsSchema, FeatureFlagsSchema, UserSessionsSchema, DataExportsSchema, ApiErrorsSchema, JobRunsSchema, NetworkConnectionsSchema];
 
     public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateSignInLogs(int count = 25) =>
         Generate(count, rng => new Dictionary<string, object?>
@@ -163,6 +188,17 @@ public static class MockEventData
             ["DurationMs"] = Math.Round(rng.NextDouble() * 500 + 2, 1),
             ["Success"] = rng.NextDouble() < 0.94,
         });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDeploymentEvents(int count = 24) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Environment"] = Pick(rng, ["dev", "staging", "production"]), ["Version"] = $"2026.08.{rng.Next(1, 30)}", ["Status"] = rng.NextDouble() < .9 ? "Succeeded" : "RolledBack" });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateServiceHealth(int count = 32) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Region"] = Pick(rng, Regions), ["LatencyMs"] = Math.Round(rng.NextDouble() * 300 + 5, 1), ["Healthy"] = rng.NextDouble() < .95 });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateQueueMessages(int count = 36) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["QueueName"] = Pick(rng, Queues), ["MessageType"] = Pick(rng, ["Created", "Updated", "Deleted", "Notification"]), ["ProcessingMs"] = Math.Round(rng.NextDouble() * 400 + 3, 1), ["DeadLettered"] = rng.NextDouble() < .04 });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateContainerLogs(int count = 40) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Level"] = Pick(rng, ["Info", "Info", "Warning", "Error"]), ["Message"] = Pick(rng, ["Request completed", "Retry scheduled", "Dependency timeout", "Configuration loaded"]), ["Region"] = Pick(rng, Regions) });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateFeatureFlags(int count = 28) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["FlagName"] = Pick(rng, ["new-search", "export-v2", "clinical-dashboard", "adaptive-auth"]), ["UserPrincipalName"] = Pick(rng, Users), ["Enabled"] = rng.Next(2) == 1, ["Variant"] = Pick(rng, ["control", "treatment-a", "treatment-b"]) });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateUserSessions(int count = 30) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["UserPrincipalName"] = Pick(rng, Users), ["SessionId"] = $"sess-{rng.Next(10000, 99999)}", ["DurationMin"] = Math.Round(rng.NextDouble() * 180 + 2, 1), ["Terminated"] = rng.NextDouble() < .9 });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDataExports(int count = 22) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["ExportName"] = Pick(rng, ["TrialSummary", "AccessReview", "UsageReport", "AuditExtract"]), ["RequestedBy"] = Pick(rng, Users), ["RowsExported"] = rng.Next(100, 50000), ["Status"] = rng.NextDouble() < .93 ? "Completed" : "Failed" });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateApiErrors(int count = 34) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Route"] = Pick(rng, Endpoints), ["StatusCode"] = Pick(rng, [400, 401, 404, 429, 500, 503]), ["ErrorType"] = Pick(rng, ["Validation", "Unauthorized", "NotFound", "Timeout", "Dependency"]), ["Service"] = Pick(rng, Services) });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateJobRuns(int count = 26) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["JobName"] = Pick(rng, JobNames), ["DurationMs"] = Math.Round(rng.NextDouble() * 3000 + 20, 1), ["Succeeded"] = rng.NextDouble() < .9, ["ItemsProcessed"] = rng.Next(10, 10000) });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateNetworkConnections(int count = 30) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["SourceService"] = Pick(rng, Services), ["Destination"] = Pick(rng, DependencyTargets), ["Port"] = Pick(rng, [443, 443, 5432, 6379, 5672]), ["Allowed"] = rng.NextDouble() < .96 });
 
     private static List<IReadOnlyDictionary<string, object?>> Generate(
         int count, Func<Random, Dictionary<string, object?>> makeRow)

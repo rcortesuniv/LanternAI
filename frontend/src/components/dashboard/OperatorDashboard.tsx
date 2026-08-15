@@ -3,7 +3,6 @@ import type { ChatTurn } from "../chat/types";
 import { useCapabilities } from "../../api/hooks";
 
 export function OperatorDashboard({ turns }: { turns: ChatTurn[] }) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [range, setRange] = useState<"session" | "saved">("session");
   const [comment, setComment] = useState("");
   const [savedComments, setSavedComments] = useState<string[]>([]);
@@ -30,16 +29,13 @@ export function OperatorDashboard({ turns }: { turns: ChatTurn[] }) {
   };
 
   return (
-    <section className={`operator-dashboard ${isExpanded ? "" : "operator-dashboard--collapsed"}`} aria-labelledby="dashboard-heading">
+    <section className="operator-dashboard" aria-labelledby="dashboard-heading">
       <div className="operator-dashboard__header">
         <div>
           <p className="eyebrow">OPERATOR VIEW</p>
           <h2 id="dashboard-heading">Workspace pulse</h2>
         </div>
         <div className="dashboard-actions">
-          <button type="button" className="dashboard-toggle" aria-expanded={isExpanded} aria-controls="workspace-pulse-content" onClick={() => setIsExpanded((expanded) => !expanded)}>
-            <span aria-hidden="true">{isExpanded ? "⌃" : "⌄"}</span> {isExpanded ? "Hide" : "Show"}
-          </button>
           <div className="dashboard-segmented" role="group" aria-label="Dashboard view">
             <button className={range === "session" ? "is-active" : ""} type="button" onClick={() => setRange("session")}>Session</button>
             <button className={range === "saved" ? "is-active" : ""} type="button" onClick={() => setRange("saved")}>Saved view</button>
@@ -47,7 +43,7 @@ export function OperatorDashboard({ turns }: { turns: ChatTurn[] }) {
           <button type="button" className="dashboard-share" onClick={shareSnapshot}>Share snapshot</button>
         </div>
       </div>
-      <div id="workspace-pulse-content" hidden={!isExpanded}>
+      <div id="workspace-pulse-content">
         {capabilities.data && <div className="system-posture" aria-label="System posture">
           <div className="dashboard-subhead"><span>System posture</span><span className="dashboard-muted">Live capability report</span></div>
           <div className="posture-items">

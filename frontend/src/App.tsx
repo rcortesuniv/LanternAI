@@ -9,6 +9,7 @@ import { OperatorDashboard } from "./components/dashboard/OperatorDashboard";
 import type { ChatTurn } from "./components/chat/types";
 
 export default function App() {
+  const [activeView, setActiveView] = useState<"workspace" | "catalog" | "pulse">("workspace");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [recentQuestions, setRecentQuestions] = useState<string[]>(() => loadQuestions("lantern-recent-queries"));
   const [savedQuestions, setSavedQuestions] = useState<string[]>(() => loadQuestions("lantern-saved-queries"));
@@ -59,9 +60,15 @@ export default function App() {
         </div>
       </header>
 
+      <nav className="app-tabs" aria-label="Primary navigation">
+        <button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => setActiveView("workspace")}>Workspace</button>
+        <button type="button" className={activeView === "pulse" ? "is-active" : ""} onClick={() => setActiveView("pulse")}>Pulse</button>
+        <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => setActiveView("catalog")}>Data catalog <span>16</span></button>
+      </nav>
+
       <div className="app-body">
         <aside className="workspace-sidebar">
-          <TableCatalogPanel />
+          <TableCatalogPanel compact />
           <QueryHistoryPanel
             recentQuestions={recentQuestions}
             savedQuestions={savedQuestions}
@@ -71,7 +78,11 @@ export default function App() {
           />
         </aside>
 
-        <main className="chat-panel" aria-label="Query chat">
+        {activeView === "catalog" ? <main className="catalog-view" aria-label="Data catalog">
+          <TableCatalogPanel />
+        </main> : activeView === "pulse" ? <main className="pulse-view" aria-label="Workspace pulse">
+          <OperatorDashboard turns={turns} />
+        </main> : <main className="chat-panel" aria-label="Query chat">
           <section className="workspace-intro">
             <div>
               <p className="eyebrow">EVENT INTELLIGENCE / NATURAL LANGUAGE</p>
@@ -86,12 +97,11 @@ export default function App() {
               <span>catalog connected</span>
             </div>
           </section>
-          <OperatorDashboard turns={turns} />
           <div className="chat-panel__messages">
             <MessageList turns={turns} onAsk={handleAsk} />
           </div>
           <ChatInput onSubmit={handleAsk} disabled={runQuery.isPending} />
-        </main>
+        </main>}
       </div>
 
       {/* Announces async status changes to screen reader users without moving visual focus. */}
