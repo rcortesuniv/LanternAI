@@ -56,6 +56,17 @@ public class QueryPlanServiceTests
     }
 
     [Fact]
+    public async Task BuildPlanAsync_NumericFilterValue_IsNormalizedToString()
+    {
+        var llm = new FakeLlmProvider("""{"table":"TestEvents","filters":[{"column":"Amount","operator":"GreaterThan","value":15}]}""");
+        var service = new QueryPlanService(llm, _catalog, NullLogger<QueryPlanService>.Instance);
+
+        var plan = await service.BuildPlanAsync("events with amount above 15");
+
+        Assert.Equal("15", Assert.Single(plan.Filters).Value);
+    }
+
+    [Fact]
     public async Task BuildPlanAsync_NotJson_ThrowsInvalidQueryPlan()
     {
         var llm = new FakeLlmProvider("I'm not sure how to answer that.");

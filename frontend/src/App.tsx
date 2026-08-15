@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useBackendHealth, useRunQuery } from "./api/hooks";
+import { useBackendHealth, useModelReadiness, useRunQuery, useTables } from "./api/hooks";
 import { ApiError } from "./api/client";
 import { TableCatalogPanel } from "./components/catalog/TableCatalogPanel";
 import { ChatInput } from "./components/chat/ChatInput";
@@ -18,8 +18,14 @@ export default function App() {
   const [liveMessage, setLiveMessage] = useState("");
   const runQuery = useRunQuery();
   const backendHealth = useBackendHealth();
+  const modelReadiness = useModelReadiness();
+  const tables = useTables();
 
   const handleAsk = (question: string) => {
+    if (modelReadiness.isError) {
+      setLiveMessage("Query paused until the model is available. Start Ollama and retry the connection.");
+      return;
+    }
     setRecentQuestions((current) => [question, ...current.filter((item) => item !== question)].slice(0, 8));
     const id = crypto.randomUUID();
     setTurns((prev) => [...prev, { id, question, status: "loading" }]);
@@ -55,12 +61,20 @@ export default function App() {
           <button type="button" className="theme-toggle" onClick={() => setTheme((current) => current === "dark" ? "clear" : "dark")}>
             <span aria-hidden="true">{theme === "dark" ? "◐" : "◑"}</span> {theme === "dark" ? "Clear mode" : "Dark mode"}
           </button>
-          <button type="button" className="home-button" onClick={() => { setTurns([]); setLiveMessage(""); }}>
+          <button type="button" className="home-button" onClick={() => { setActiveView("workspace"); setTurns([]); setLiveMessage(""); }}>
             <span aria-hidden="true">←</span> Back to home
           </button>
           <span className={`environment-pill environment-pill--${backendHealth.isError && !backendHealth.isFetching ? "offline" : "online"}`}>
-            <span className="status-dot" aria-hidden="true" /> {backendHealth.isFetching ? "Checking backend" : backendHealth.isError ? "Backend offline" : "Backend ready"}
+            <span className="status-dot" aria-hidden="true" /> {backendHealth.isFetching ? "Checking API" : backendHealth.isError ? "API offline" : "API online"}
           </span>
+          <span className={`environment-pill environment-pill--${modelReadiness.isError && !modelReadiness.isFetching ? "offline" : "online"}`} title="Requires Ollama for natural-language query generation">
+            <span className="status-dot" aria-hidden="true" /> {modelReadiness.isFetching ? "Checking model" : modelReadiness.isError ? "Model unavailable" : "Model ready"}
+          </span>
+          {(backendHealth.isError || modelReadiness.isError) && (
+            <button type="button" className="status-retry" onClick={() => { void backendHealth.refetch(); void modelReadiness.refetch(); }}>
+              Retry
+            </button>
+          )}
           <span className="header-meta__version">Workspace 01</span>
         </div>
       </header>
@@ -69,7 +83,7 @@ export default function App() {
         <button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => setActiveView("workspace")}>Workspace</button>
         <button type="button" className={activeView === "pulse" ? "is-active" : ""} onClick={() => setActiveView("pulse")}>Pulse</button>
         <button type="button" className={activeView === "statistics" ? "is-active" : ""} onClick={() => setActiveView("statistics")}>User statistics</button>
-        <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => setActiveView("catalog")}>Data catalog <span>16</span></button>
+        <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => setActiveView("catalog")}>Data catalog <span>{tables.isLoading ? "…" : tables.data?.length ?? "—"}</span></button>
       </nav>
 
       <div className="app-body">
@@ -99,14 +113,20 @@ export default function App() {
             </div>
             <div className="workspace-intro__metric" aria-label="Available data sources">
               <span className="metric-label">DATA SOURCES</span>
-              <strong>LIVE</strong>
-              <span>catalog connected</span>
+              <strong>{tables.isLoading ? "…" : tables.data?.length ?? "—"}</strong>
+              <span>{tables.isError ? "catalog unavailable" : "tables connected"}</span>
             </div>
           </section>
+          {modelReadiness.isError && (
+            <div className="workspace-warning" role="status">
+              <span aria-hidden="true">!</span>
+              <p><strong>Natural-language queries are paused.</strong> Start Ollama, then use Retry in the header to reconnect the model.</p>
+            </div>
+          )}
           <div className="chat-panel__messages">
             <MessageList turns={turns} onAsk={handleAsk} />
           </div>
-          <ChatInput onSubmit={handleAsk} disabled={runQuery.isPending} />
+          <ChatInput onSubmit={handleAsk} disabled={runQuery.isPending || modelReadiness.isError} />
         </main>}
       </div>
 

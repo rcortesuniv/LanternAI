@@ -22,6 +22,19 @@ export function useBackendHealth() {
   });
 }
 
+export function useModelReadiness() {
+  return useQuery({
+    queryKey: ["model-readiness"],
+    queryFn: api.checkReadiness,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    retry: 1,
+    retryDelay: 1_000,
+    staleTime: 10_000,
+  });
+}
+
 export function useCapabilities() {
   return useQuery({
     queryKey: ["capabilities"],

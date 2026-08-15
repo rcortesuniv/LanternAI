@@ -57,6 +57,10 @@ builder.Services.AddHttpClient<ILlmProvider, OllamaLlmProvider>((sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
     client.BaseAddress = new Uri(options.BaseUrl);
+    if (!string.IsNullOrWhiteSpace(options.ApiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
+    }
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
 
