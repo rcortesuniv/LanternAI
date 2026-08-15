@@ -39,7 +39,11 @@ public static class QueryEndpoints
             var cacheKey = $"query:v1:{tenant.TenantId}:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Question.Trim().ToLowerInvariant())))}";
             if (cache.TryGetValue(cacheKey, out QueryResponse? cachedResponse) && cachedResponse is not null)
             {
-                return Results.Ok(cachedResponse with { Diagnostics = cachedResponse.Diagnostics is { } diagnostics ? diagnostics with { CacheHit = true } : null });
+                return Results.Ok(cachedResponse with
+                {
+                    Diagnostics = cachedResponse.Diagnostics is { } diagnostics ? diagnostics with { CacheHit = true } : null,
+                    Metrics = cachedResponse.Metrics is { } cachedMetrics ? cachedMetrics with { CacheHit = true } : null,
+                });
             }
 
             var logger = loggerFactory.CreateLogger("LanternAI.QueryAudit");
@@ -51,10 +55,22 @@ public static class QueryEndpoints
             var generatedKql = KqlRenderer.Render(plan);
             stopwatch.Stop();
             logger.LogInformation("Query completed in {DurationMs} ms across {SourceCount} source(s), returning {RowCount} row(s)", stopwatch.Elapsed.TotalMilliseconds, plan.Tables?.Count ?? 1, result.Rows.Count);
+            var auditId = Guid.NewGuid().ToString("N");
             auditStore.Append(new AuditEvent(DateTimeOffset.UtcNow, "query.completed", httpContext.TraceIdentifier, tenant.TenantId, tenant.SubjectId, request.Question, result.Rows.Count, stopwatch.Elapsed.TotalMilliseconds));
 
             var cost = costEstimator.Estimate(plan);
-            var response = new QueryResponse(request.Question, generatedKql, plan, result, new QueryUsage(planned.PromptTokens, planned.CompletionTokens, planned.TotalTokens), new QueryDiagnostics(false, "v1", cost.Tier, cost.EstimatedRowsScanned, cost.EstimatedWorkUnits, cost.Explanation));
+            var explanation = BuildExplanation(plan, request.Question);
+            var metrics = new QueryMetrics(cost.Tier, cost.EstimatedRowsScanned, cost.EstimatedWorkUnits, result.Rows.Count, planned.PromptTokens ?? 0, planned.CompletionTokens ?? 0, stopwatch.Elapsed.TotalMilliseconds, false);
+            var response = new QueryResponse(
+                request.Question,
+                generatedKql,
+                plan,
+                result,
+                new QueryUsage(planned.PromptTokens, planned.CompletionTokens, planned.TotalTokens),
+                new QueryDiagnostics(false, "v1", cost.Tier, cost.EstimatedRowsScanned, cost.EstimatedWorkUnits, cost.Explanation),
+                explanation,
+                metrics,
+                auditId);
             cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
             return Results.Ok(response);
         })
@@ -62,6 +78,46 @@ public static class QueryEndpoints
         .WithSummary("Translate a natural-language question into a query plan and execute it against the simulated tables.")
         .RequireRateLimiting(RateLimiting.QueryPolicy);
         if (requireAuthorization) endpoint.RequireAuthorization("Lantern.User");
+    }
+
+    private static QueryExplanation BuildExplanation(QueryPlan plan, string question)
+    {
+        var reasons = new List<string>();
+        reasons.Add($"Selected '{plan.Table}' as the primary source for this question.");
+
+        if (plan.Tables is { Count: > 0 })
+        {
+            reasons.Add($"Combined the requested sources: {string.Join(", ", plan.Tables)}.");
+        }
+
+        if (plan.TimeRange is not null)
+        {
+            reasons.Add($"Applied a {plan.TimeRange.LookbackHours}-hour lookback on '{plan.TimeRange.Column}'.");
+        }
+
+        if (plan.Filters.Count > 0)
+        {
+            reasons.Add($"Narrowed the result set with {plan.Filters.Count} filter(s) against the selected schema.");
+        }
+
+        if (plan.Aggregation is not null)
+        {
+            var target = plan.Aggregation.Function == AggregationFunction.Count ? "all rows" : (plan.Aggregation.Column ?? "the selected numeric column");
+            reasons.Add($"Summarized the data using {plan.Aggregation.Function} on {target}.");
+        }
+
+        var warnings = new List<string>();
+        if (string.IsNullOrWhiteSpace(question))
+        {
+            warnings.Add("The question was empty, so the plan used the default table selection fallback.");
+        }
+
+        return new QueryExplanation(
+            $"This plan was generated to answer: \"{question.Trim()}\".",
+            reasons,
+            plan.Aggregation is not null ? "medium" : "high",
+            warnings,
+            []);
     }
 
     public sealed record QueryRequest(string Question);
