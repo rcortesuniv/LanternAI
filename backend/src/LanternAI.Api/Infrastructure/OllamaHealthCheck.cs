@@ -26,7 +26,7 @@ public sealed class OllamaHealthCheck(IHttpClientFactory httpClientFactory, IOpt
                     && ModelMatches(name.GetString(), options.Value.Model));
             return modelAvailable
                 ? HealthCheckResult.Healthy("Ollama and the configured model are ready.")
-                : HealthCheckResult.Unhealthy($"Configured Ollama model '{options.Value.Model}' is not installed.");
+                : HealthCheckResult.Degraded($"Ollama is reachable but model '{options.Value.Model}' was not found in local tags. It may be a remote or cloud-hosted model that is pulled on first use.");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or UriFormatException)
         {
