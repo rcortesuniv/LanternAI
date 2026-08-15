@@ -13,6 +13,10 @@ public sealed class OllamaHealthCheck(IHttpClientFactory httpClientFactory, IOpt
         {
             using var client = httpClientFactory.CreateClient();
             client.BaseAddress = new Uri(options.Value.BaseUrl);
+            if (!string.IsNullOrWhiteSpace(options.Value.ApiKey))
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.Value.ApiKey);
+            }
             client.Timeout = TimeSpan.FromSeconds(3);
             using var response = await client.GetAsync("api/tags", cancellationToken);
             if (!response.IsSuccessStatusCode)

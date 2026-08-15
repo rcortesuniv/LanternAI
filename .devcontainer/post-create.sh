@@ -3,19 +3,6 @@
 # everything needed to run Lantern AI without further manual install steps.
 set -euo pipefail
 
-echo "==> Installing Ollama..."
-curl -fsSL https://ollama.com/install.sh | sh
-
-echo "==> Starting Ollama server..."
-nohup ollama serve > /tmp/ollama.log 2>&1 &
-for _ in $(seq 1 30); do
-  curl -sf http://localhost:11434 > /dev/null 2>&1 && break
-  sleep 1
-done
-
-echo "==> Pulling qwen2.5-coder model (first time only; can take a few minutes)..."
-ollama pull qwen2.5-coder
-
 echo "==> Restoring backend dependencies..."
 (cd backend && dotnet restore)
 
@@ -34,4 +21,6 @@ cat <<'EOF'
     cd frontend && npm run dev -- --host 0.0.0.0
 
 Then open the forwarded port 5173 from the "Ports" tab.
+
+Set Ollama__ApiKey to your Ollama Cloud token before starting the backend.
 EOF

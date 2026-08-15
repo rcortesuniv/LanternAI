@@ -20,7 +20,7 @@ public static class CapabilitiesEndpoints
             {
                 authentication = new { configured = authConfigured, provider = "Entra ID" },
                 data = new { configured = adxConfigured, provider = adxConfigured ? "Azure Data Explorer" : "Simulated catalog" },
-                languageModel = new { provider = "Ollama", model = ollama.Value.Model },
+                languageModel = new { provider = "Ollama Cloud", model = ollama.Value.Model },
                 sourceCount = catalog.GetTables().Count,
                 dataSources = sources.GetCapabilities(),
             });
