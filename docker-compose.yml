@@ -7,11 +7,16 @@ services:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
+    command: >
+      sh -lc "ollama serve &
+      sleep 8
+      ollama pull qwen2.5-coder:1.5b
+      wait"
     healthcheck:
-      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "ollama list | grep -q 'qwen2.5-coder:1.5b' || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 15s
+      retries: 12
 
   backend:
     build:
