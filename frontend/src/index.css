@@ -744,3 +744,24 @@ body {
 .incident-report__section li { font-size: 0.8rem; line-height: 1.5; margin-bottom: 4px; }
 .incident-report__section p { margin: 0; font-size: 0.8rem; line-height: 1.5; }
 .incident-report__meta { margin: 12px 0 0; font: 0.68rem var(--mono, monospace); color: var(--muted, #8b9891); }
+
+/* Dark mode overrides for time pills — boost contrast */
+.app-shell:not(.app-shell--clear) .time-pill {
+  border-color: #2b514a;
+  color: #8baeA6;
+}
+.app-shell:not(.app-shell--clear) .time-pill:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+.app-shell:not(.app-shell--clear) .time-pill--active {
+  background: var(--green);
+  color: #06100f;
+  border-color: var(--green);
+}
+.app-shell:not(.app-shell--clear) .chat-input__summarize {
+  color: #8baeA6;
+}
+.app-shell:not(.app-shell--clear) .chat-input__summarize input[type="checkbox"] {
+  accent-color: var(--green);
+}
