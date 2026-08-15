@@ -32,11 +32,24 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // --- CORS: locked to the configured frontend origin(s) only ----------------
+// AllowedOrigins is an exact-match allow-list (e.g. the local dev server).
+// AllowedOriginSuffixes additionally allows any HTTPS origin whose host ends
+// with one of these suffixes — used for GitHub Codespaces' per-session
+// forwarded-port hostnames (https://<codespace>-5173.app.github.dev), which
+// can't be known in advance as an exact origin. Each forwarded Codespaces
+// port is only reachable by the authenticated owner of that Codespace, so
+// this is a reasonable convenience for the demo; revisit alongside real
+// auth before production (see docs/SECURITY.md).
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var allowedOriginSuffixes = builder.Configuration.GetSection("Cors:AllowedOriginSuffixes").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy => policy
-        .WithOrigins(allowedOrigins)
+        .SetIsOriginAllowed(origin =>
+            allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase) ||
+            (Uri.TryCreate(origin, UriKind.Absolute, out var originUri)
+                && originUri.Scheme == Uri.UriSchemeHttps
+                && allowedOriginSuffixes.Any(suffix => originUri.Host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))))
         .AllowAnyHeader()
         .WithMethods("GET", "POST"));
 });

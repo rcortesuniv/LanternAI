@@ -90,6 +90,10 @@ file) gives you a fully set-up environment with no manual install steps:
 - Docker is available inside the container too (`docker-in-docker` feature),
   so `docker compose up` also works here if you'd rather use that path
   instead of the steps below.
+- No `.env` editing needed: the frontend detects Codespaces' forwarded-port
+  hostname (`https://<codespace>-5173.app.github.dev`) and derives the
+  backend's forwarded URL automatically, and the backend's CORS policy
+  already allows `*.app.github.dev` / `*.github.dev` origins.
 
 Once the Codespace finishes setting up:
 
@@ -121,12 +125,13 @@ ranges, limits).
 
 ## Configuration reference
 
-| Variable                          | Default                    | Purpose                                  |
-|------------------------------------|-----------------------------|-------------------------------------------|
-| `Ollama__BaseUrl`                  | `http://localhost:11434`   | Ollama server address                     |
-| `Ollama__Model`                    | `qwen2.5-coder`             | Model used for NL → query-plan generation |
-| `Cors__AllowedOrigins__0`          | `http://localhost:5173`    | Frontend origin allowed to call the API   |
-| `VITE_API_BASE_URL` (frontend)     | `http://localhost:5020`    | Backend base URL the UI calls             |
+| Variable                            | Default                     | Purpose                                                                 |
+|-------------------------------------|------------------------------|--------------------------------------------------------------------------|
+| `Ollama__BaseUrl`                   | `http://localhost:11434`    | Ollama server address                                                     |
+| `Ollama__Model`                     | `qwen2.5-coder`              | Model used for NL → query-plan generation                                |
+| `Cors__AllowedOrigins__0`           | `http://localhost:5173`     | Frontend origin allowed to call the API (exact match)                    |
+| `Cors__AllowedOriginSuffixes__0`    | `.app.github.dev`           | Additional HTTPS origin suffixes allowed (Codespaces forwarded ports)    |
+| `VITE_API_BASE_URL` (frontend)      | auto-detected, else `http://localhost:5020` | Backend base URL the UI calls — only needed if auto-detection doesn't apply to your setup |
 
 .NET configuration keys are overridden via double-underscore environment
 variables (e.g. `Ollama__BaseUrl`) rather than editing `appsettings.json`
