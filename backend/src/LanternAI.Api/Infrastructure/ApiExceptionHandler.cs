@@ -19,14 +19,17 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             LlmUnavailableException ex => (StatusCodes.Status503ServiceUnavailable, "Language model unavailable", ex.Message),
             _ => (StatusCodes.Status500InternalServerError, "Unexpected error", "An unexpected error occurred. Please try again."),
         };
+        var requestPathForLog = httpContext.Request.Path.ToString()
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", string.Empty, StringComparison.Ordinal);
 
         if (statusCode == StatusCodes.Status500InternalServerError)
         {
-            logger.LogError(exception, "Unhandled exception on {Path}", httpContext.Request.Path);
+            logger.LogError(exception, "Unhandled exception on {Path}", requestPathForLog);
         }
         else
         {
-            logger.LogWarning(exception, "{Title} on {Path}", title, httpContext.Request.Path);
+            logger.LogWarning(exception, "{Title} on {Path}", title, requestPathForLog);
         }
 
         httpContext.Response.StatusCode = statusCode;
