@@ -10,10 +10,10 @@ services:
     command: >
       sh -lc "ollama serve &
       sleep 8
-      ollama pull qwen2.5-coder
+      ollama pull qwen2.5-coder:1.5b
       wait"
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q 'qwen2.5-coder' || exit 1"]
+      test: ["CMD-SHELL", "ollama list | grep -q 'qwen2.5-coder:1.5b' || exit 1"]
       interval: 10s
       timeout: 15s
       retries: 12

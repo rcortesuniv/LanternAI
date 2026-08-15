@@ -19,7 +19,7 @@ fi
 
 if curl -sf http://localhost:11434 >/dev/null 2>&1; then
   echo "==> Ensuring qwen2.5-coder model is available..."
-  ollama pull qwen2.5-coder >/dev/null 2>&1 || true
+  ollama pull qwen2.5-coder:1.5b >/dev/null 2>&1 || true
 else
   echo "⚠ Ollama did not become ready; LLM features will be unavailable until manually started." >&2
 fi
