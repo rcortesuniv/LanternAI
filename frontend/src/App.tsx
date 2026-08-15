@@ -95,6 +95,7 @@ export default function App() {
     setTurns([]);
     setAnomalyReport(null);
     setIncidentReport(null);
+    setActiveView("workspace");
     setLiveMessage("Running promptbook investigation…");
     executePromptbook.mutate(id, {
       onSuccess: (result) => {
