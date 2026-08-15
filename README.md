@@ -1,5 +1,7 @@
 # Lantern AI
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/rcortesuniv/LanternAI)
+
 Lantern AI lets Azure Data Explorer users ask questions about their event
 data in plain English instead of hand-writing KQL. This is a **Phase 1
 MVP / demo**: it does not talk to a real ADX cluster yet. Instead, a small
@@ -27,9 +29,10 @@ deferred until this moves past demo stage.
 ## Project layout
 
 ```
-backend/    ASP.NET Core 8 Web API (LanternAI.Api) + xUnit tests
-frontend/   React + TypeScript (Vite) chat UI
-docs/       Security & architecture notes
+backend/        ASP.NET Core 8 Web API (LanternAI.Api) + xUnit tests
+frontend/       React + TypeScript (Vite) chat UI
+docs/           Security & architecture notes
+.devcontainer/  GitHub Codespaces / VS Code Dev Containers setup
 ```
 
 ## Prerequisites
@@ -71,6 +74,39 @@ docker compose exec ollama ollama pull qwen2.5-coder
 
 This starts Ollama, the backend API (`:5020`), and a Vite dev server for the
 frontend (`:5173`) with hot reload.
+
+## Running in GitHub Codespaces / a Dev Container
+
+The repo includes a `.devcontainer` config, so **Create codespace on main**
+(green **Code** button → **Codespaces** tab, or the badge at the top of this
+file) gives you a fully set-up environment with no manual install steps:
+
+- .NET 8 SDK and Node.js 20 preinstalled in the container image.
+- Ollama installed, started, and `qwen2.5-coder` pulled automatically via
+  `postCreateCommand` (`.devcontainer/post-create.sh`) — first-time setup
+  takes a few minutes while the model downloads.
+- Ports `5020` (API), `5173` (web), and `11434` (Ollama) are pre-labeled for
+  auto-forwarding.
+- Docker is available inside the container too (`docker-in-docker` feature),
+  so `docker compose up` also works here if you'd rather use that path
+  instead of the steps below.
+
+Once the Codespace finishes setting up:
+
+```bash
+# Terminal 1
+cd backend && dotnet run --project src/LanternAI.Api --urls http://localhost:5020
+
+# Terminal 2
+cd frontend && npm run dev -- --host 0.0.0.0
+```
+
+Then open the **Ports** tab (bottom panel) and click the globe icon next to
+`5173` to view the app in your browser.
+
+The same `.devcontainer` config also works with VS Code's **Dev Containers**
+extension for a local containerized environment, if you'd rather not use
+Codespaces at all.
 
 ## Tests
 
