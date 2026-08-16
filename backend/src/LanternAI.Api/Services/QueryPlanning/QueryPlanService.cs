@@ -26,7 +26,10 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
     public async Task<QueryPlan> BuildPlanAsync(string question, CancellationToken cancellationToken = default)
         => (await BuildPlanWithUsageAsync(question, cancellationToken)).Plan;
 
-    public async Task<QueryPlanBuildResult> BuildPlanWithUsageAsync(string question, CancellationToken cancellationToken = default)
+    public Task<QueryPlanBuildResult> BuildPlanWithUsageAsync(string question, CancellationToken cancellationToken = default)
+        => BuildPlanWithUsageAsync(question, null, cancellationToken);
+
+    public async Task<QueryPlanBuildResult> BuildPlanWithUsageAsync(string question, ConversationContext? context, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(question))
         {
@@ -34,10 +37,69 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         }
 
         var systemPrompt = BuildSystemPrompt();
-        var completion = await llmProvider.CompleteAsync(systemPrompt, question, cancellationToken);
+        var userPrompt = context is null
+            ? question
+            : BuildFollowUpUserPrompt(question, context);
+
+        var completion = await llmProvider.CompleteAsync(systemPrompt, userPrompt, cancellationToken);
 
         var raw = ParseJson(completion.Content);
         return new QueryPlanBuildResult(Validate(raw), completion.PromptTokens, completion.CompletionTokens, completion.TotalTokens);
+    }
+
+    public async Task<string> SummarizeAsync(string question, QueryPlan plan, QueryResult result, CancellationToken cancellationToken = default)
+    {
+        var systemPrompt = """
+            You are a security analyst's assistant. Given a question, the query plan that answered it,
+            and a sample of the result rows, write a concise (2–3 sentence) natural-language summary
+            of what the data shows. Focus on patterns, anomalies, or notable counts — not restating
+            the query. If the result set is empty, say so and suggest what that might mean.
+            Respond with plain text only, no JSON or markdown.
+            """;
+
+        var rowCount = result.Rows.Count;
+        var sampleRows = result.Rows.Take(20);
+        var sampleText = sampleRows.Count() > 0
+            ? string.Join("\n", sampleRows.Select(r => string.Join(" | ", result.Columns.Select(c => r.GetValueOrDefault(c)))))
+            : "(no rows returned)";
+
+        var userPrompt = $"""
+            Question: {question}
+            Table: {plan.Table}
+            Filters: {plan.Filters.Count} applied
+            Aggregation: {(plan.Aggregation is null ? "none" : plan.Aggregation.Function.ToString())}
+            Total rows: {rowCount}
+            Sample rows (first 20):
+            {sampleText}
+            """;
+
+        var completion = await llmProvider.CompleteAsync(systemPrompt, userPrompt, cancellationToken);
+        return completion.Content.Trim();
+    }
+
+    private static string BuildFollowUpUserPrompt(string question, ConversationContext context)
+    {
+        var previousPlan = context.PreviousPlan;
+        var planDesc = previousPlan is null
+            ? "(no previous plan)"
+            : $"Table: {previousPlan.Table}, Filters: {previousPlan.Filters.Count}, Aggregation: {previousPlan.Aggregation?.Function.ToString() ?? "none"}, TimeRange: {(previousPlan.TimeRange is null ? "none" : $"{previousPlan.TimeRange.LookbackHours}h on {previousPlan.TimeRange.Column}")}";
+
+        var summaryDesc = string.IsNullOrWhiteSpace(context.PreviousSummary)
+            ? "(no summary available)"
+            : context.PreviousSummary;
+
+        return $"""
+            Previous question: "{context.PreviousQuestion}"
+            Previous plan: {planDesc}
+            Previous result summary: {summaryDesc}
+
+            The user is asking a follow-up question. Interpret it in the context above.
+            If the follow-up refines or filters the previous query, build on the previous plan
+            (same table, adjusted filters/aggregation). If it asks about something entirely different,
+            ignore the previous context and generate a fresh plan.
+
+            Follow-up question: "{question}"
+            """;
     }
 
     private string BuildSystemPrompt()
@@ -56,10 +118,10 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
             Available tables:
             {{string.Join("\n", tableDescriptions)}}
 
-                        JSON shape (omit fields you don't need):
+            JSON shape (omit fields you don't need):
             {
               "table": "<one of the table names above>",
-                            "tables": ["<one or more table names to union for cross-source analysis>"],
+              "tables": ["<one or more table names to union for cross-source analysis>"],
               "columns": ["<column names to return, or omit for all columns>"],
               "filters": [{"column": "<name>", "operator": "Equals|NotEquals|Contains|GreaterThan|LessThan", "value": "<string>"}],
               "timeRange": {"column": "<a datetime column>", "lookbackHours": <number>},
@@ -71,9 +133,9 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
             - Only use table and column names exactly as listed above.
             - "table" is required and is the primary source; use "tables" when the question asks to combine sources.
             - Cross-source plans are unioned before filtering and aggregation. Only use columns shared by every selected table.
-                        - Always return a JSON object with a non-empty "table", even when the question is ambiguous.
-                        - Example cross-source request: "total duration across app requests, database queries, and API dependencies"
-                            -> table=AppRequests; tables=AppRequests,DatabaseQueries,ApiDependencies; aggregation=Sum(DurationMs)
+            - Always return a JSON object with a non-empty "table", even when the question is ambiguous.
+            - Example cross-source request: "total duration across app requests, database queries, and API dependencies"
+              -> table=AppRequests; tables=AppRequests,DatabaseQueries,ApiDependencies; aggregation=Sum(DurationMs)
             - If the question doesn't map to any table, still pick the closest table —
               validation on our side will reject anything unusable.
             """;
@@ -158,7 +220,7 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         {
             throw new InvalidQueryPlanException($"Unknown filter operator '{filter.Operator}'.");
         }
-        return new QueryFilter(column, op, filter.Value);
+        return new QueryFilter(column, op, ScalarValueToString(filter.Value));
     }
 
     private static QueryFilter ValidateFilter(TableSchema table, RawFilter filter)
@@ -169,8 +231,15 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         {
             throw new InvalidQueryPlanException($"Unknown filter operator '{filter.Operator}'.");
         }
-        return new QueryFilter(column.Name, op, filter.Value);
+        return new QueryFilter(column.Name, op, ScalarValueToString(filter.Value));
     }
+
+    private static string ScalarValueToString(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString() ?? "",
+        JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False => value.ToString(),
+        _ => throw new InvalidQueryPlanException("Filter values must be strings, numbers, or booleans."),
+    };
 
     private static QueryTimeRange ValidateTimeRange(TableSchema table, RawTimeRange timeRange)
     {
@@ -237,7 +306,7 @@ public sealed class QueryPlanService(ILlmProvider llmProvider, IEventTableCatalo
         RawAggregation? Aggregation,
         int? Limit);
 
-    private sealed record RawFilter(string Column, string Operator, string Value);
+    private sealed record RawFilter(string Column, string Operator, JsonElement Value);
 
     private sealed record RawTimeRange(string Column, double LookbackHours);
 

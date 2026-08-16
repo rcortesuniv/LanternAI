@@ -55,6 +55,10 @@ export interface QueryResponse {
   result: QueryResultData;
   usage?: QueryUsage | null;
   diagnostics?: QueryDiagnostics | null;
+  explanation?: QueryExplanation | null;
+  metrics?: QueryMetrics | null;
+  auditId?: string | null;
+  resultSummary?: string | null;
 }
 
 export interface QueryUsage {
@@ -70,6 +74,25 @@ export interface QueryDiagnostics {
   estimatedRowsScanned: number;
   estimatedWorkUnits: number;
   costExplanation: string;
+}
+
+export interface QueryExplanation {
+  summary: string;
+  reasons: string[];
+  confidence: string;
+  warnings: string[];
+  unresolvedAmbiguities: string[];
+}
+
+export interface QueryMetrics {
+  costTier: string;
+  estimatedRowsScanned: number;
+  estimatedWorkUnits: number;
+  resultRowCount: number;
+  promptTokens: number;
+  completionTokens: number;
+  durationMs: number;
+  cacheHit: boolean;
 }
 
 export interface ProblemDetails {
@@ -90,4 +113,84 @@ export interface SystemCapabilities {
   languageModel: { provider: string; model: string };
   sourceCount: number;
   dataSources: Array<{ name: string; kind: string; supportsJoins: boolean; supportsAggregations: boolean; supportsCaching: boolean }>;
+}
+
+/** Request payload for POST /api/query. */
+export interface QueryRequestPayload {
+  question: string;
+  timeRangeHours?: number | null;
+  summarize?: boolean;
+  previousQuestion?: string | null;
+  previousPlan?: QueryPlan | null;
+  previousSummary?: string | null;
+}
+
+// --- Promptbooks ---
+
+export interface PromptbookStep {
+  question: string;
+  description: string;
+  minRowsToContinue?: number | null;
+  summarize?: boolean;
+}
+
+export interface PromptbookSummary {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  stepCount: number;
+  steps: PromptbookStep[];
+}
+
+export interface PromptbookStepResult {
+  stepIndex: number;
+  question: string;
+  plan: QueryPlan | null;
+  result: QueryResultData | null;
+  generatedKql: string | null;
+  summary: string | null;
+  rowCount: number;
+  skipped: boolean;
+}
+
+export interface PromptbookExecutionResult {
+  promptbookId: string;
+  promptbookName: string;
+  steps: PromptbookStepResult[];
+  totalDurationMs: number;
+  totalTokens: number;
+}
+
+// --- Anomaly detection ---
+
+export interface AnomalyFlag {
+  severity: string;
+  title: string;
+  description: string;
+  evidence: string[];
+}
+
+export interface AnomalyReport {
+  flags: AnomalyFlag[];
+  hasFindings: boolean;
+}
+
+// --- Incident summary ---
+
+export interface SessionQuery {
+  question: string;
+  plan: QueryPlan | null;
+  rowCount: number;
+  summary: string | null;
+}
+
+export interface IncidentSummary {
+  title: string;
+  overview: string;
+  keyFindings: string[];
+  riskAssessment: string;
+  recommendedActions: string[];
+  queryCount: number;
+  totalRowsAnalyzed: number;
 }

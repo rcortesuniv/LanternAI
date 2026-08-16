@@ -38,15 +38,20 @@ export function QueryResultTable({ result }: { result: QueryResultData }) {
         </button>
       </div>
       <div className="result-table__scroll" role="group" aria-label="Query results, scrollable">
-        <table className="result-table">
+        {visibleRows.length === 0 ? (
+          <p className="result-table__empty">
+            No rows match <strong>{search}</strong>.
+            <button type="button" className="result-table__clear" onClick={() => setSearch("")}>Clear filter</button>
+          </p>
+        ) : <table className="result-table">
           <caption className="sr-only">
             {result.rows.length} row{result.rows.length === 1 ? "" : "s"} returned
           </caption>
           <thead>
             <tr>
               {result.columns.map((col) => (
-                <th key={col} scope="col">
-                  <button type="button" className="result-table__sort" onClick={() => toggleSort(col)}>
+                <th key={col} scope="col" aria-sort={sortColumn === col ? (sortDescending ? "descending" : "ascending") : "none"}>
+                  <button type="button" className="result-table__sort" onClick={() => toggleSort(col)} aria-label={`Sort by ${col}${sortColumn === col ? (sortDescending ? ", descending" : ", ascending") : ""}`}>
                   {col}
                     <span aria-hidden="true">{sortColumn === col ? (sortDescending ? " ↓" : " ↑") : ""}</span>
                   </button>
@@ -64,7 +69,7 @@ export function QueryResultTable({ result }: { result: QueryResultData }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table>}
       </div>
     </div>
   );

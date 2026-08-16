@@ -9,7 +9,7 @@
     },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
-  "forwardPorts": [5020, 5173, 11434],
+  "forwardPorts": [5020, 5173],
   "portsAttributes": {
     "5020": {
       "label": "Lantern AI API",
@@ -18,13 +18,10 @@
     "5173": {
       "label": "Lantern AI Web",
       "onAutoForward": "openBrowser"
-    },
-    "11434": {
-      "label": "Ollama",
-      "onAutoForward": "silent"
     }
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
   "customizations": {
     "vscode": {
       "extensions": [

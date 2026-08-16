@@ -4,10 +4,9 @@ namespace LanternAI.Api.Data;
 
 /// <summary>
 /// Generates deterministic-shaped, randomized-content sample data for the
-/// three simulated event tables used in Phase 1. Row timestamps are spread
-/// backward from "now" so time-range questions ("in the last 24 hours")
-/// behave sensibly in a live demo; the seeded Random keeps the categorical
-/// values reproducible across runs.
+/// simulated event tables. Row timestamps are spread backward from "now"
+/// so time-range questions behave sensibly in a live demo; the seeded Random
+/// keeps the categorical values reproducible across runs.
 /// </summary>
 public static class MockEventData
 {
@@ -15,21 +14,23 @@ public static class MockEventData
     [
         "aharris@contoso.com", "bpatel@contoso.com", "cmiller@contoso.com",
         "dsingh@contoso.com", "egomez@contoso.com", "fchen@contoso.com",
+        "jdoe@contoso.com", "klee@contoso.com", "mwang@contoso.com", "nadia@contoso.com",
+        "osilva@contoso.com", "rkhan@contoso.com",
     ];
 
-    private static readonly string[] Apps = ["Salesforce", "ServiceNow", "Workday", "Office365", "InternalPortal"];
-    private static readonly string[] Locations = ["US", "GB", "IN", "DE", "SG", "BR"];
-    private static readonly string[] ClientApps = ["Browser", "Mobile App", "Desktop Client"];
-    private static readonly string[] Computers = ["APP-SRV-01", "APP-SRV-02", "DB-SRV-01", "WEB-SRV-01", "WEB-SRV-02"];
-    private static readonly string[] Activities = ["Logon", "Logoff", "Process Created", "Account Locked", "Privilege Use"];
-    private static readonly string[] Endpoints = ["/api/orders", "/api/patients", "/api/inventory", "/api/reports", "/api/auth"];
-    private static readonly string[] Resources = ["ClinicalTrial-API", "Identity-Provider", "DataLake", "ResearchPortal"];
-    private static readonly string[] Databases = ["ClinicalOps", "Analytics", "Inventory", "Identity"];
-    private static readonly string[] DependencyTargets = ["payments.api", "identity.api", "warehouse.api", "clinical-db"];
-    private static readonly string[] Services = ["identity", "orders", "research", "inventory", "reporting"];
-    private static readonly string[] Regions = ["eastus", "westeurope", "southeastasia", "uksouth"];
-    private static readonly string[] Queues = ["clinical-events", "audit-events", "notifications", "data-export"];
-    private static readonly string[] JobNames = ["NightlyIngest", "TrialMetrics", "ComplianceExport", "IndexRefresh"];
+    private static readonly string[] Apps = ["Salesforce", "ServiceNow", "Workday", "Office365", "InternalPortal", "Confluence", "GitHub"];
+    private static readonly string[] Locations = ["US", "GB", "IN", "DE", "SG", "BR", "FR", "JP", "AU", "CA"];
+    private static readonly string[] ClientApps = ["Browser", "Mobile App", "Desktop Client", "PowerShell", "SDK"];
+    private static readonly string[] Computers = ["APP-SRV-01", "APP-SRV-02", "DB-SRV-01", "DB-SRV-02", "WEB-SRV-01", "WEB-SRV-02", "BASTION-01"];
+    private static readonly string[] Activities = ["Logon", "Logoff", "Process Created", "Account Locked", "Privilege Use", "Password Change", "Service Started"];
+    private static readonly string[] Endpoints = ["/api/orders", "/api/patients", "/api/inventory", "/api/reports", "/api/auth", "/api/exports", "/api/trials"];
+    private static readonly string[] Resources = ["ClinicalTrial-API", "Identity-Provider", "DataLake", "ResearchPortal", "ComplianceVault"];
+    private static readonly string[] Databases = ["ClinicalOps", "Analytics", "Inventory", "Identity", "AuditLog"];
+    private static readonly string[] DependencyTargets = ["payments.api", "identity.api", "warehouse.api", "clinical-db", "audit-svc", "notify.api"];
+    private static readonly string[] Services = ["identity", "orders", "research", "inventory", "reporting", "audit", "notifications"];
+    private static readonly string[] Regions = ["eastus", "westeurope", "southeastasia", "uksouth", "northeurope", "westus2"];
+    private static readonly string[] Queues = ["clinical-events", "audit-events", "notifications", "data-export", "compliance-checks"];
+    private static readonly string[] JobNames = ["NightlyIngest", "TrialMetrics", "ComplianceExport", "IndexRefresh", "ThreatScan", "PolicyCheck"];
 
     public static TableSchema SignInLogsSchema { get; } = new(
         "SigninLogs",
@@ -125,7 +126,11 @@ public static class MockEventData
     public static IReadOnlyList<TableSchema> AllSchemas { get; } =
         [SignInLogsSchema, SecurityEventSchema, AppRequestsSchema, AuditEventsSchema, DatabaseQueriesSchema, ApiDependenciesSchema, DeploymentEventsSchema, ServiceHealthSchema, QueueMessagesSchema, ContainerLogsSchema, FeatureFlagsSchema, UserSessionsSchema, DataExportsSchema, ApiErrorsSchema, JobRunsSchema, NetworkConnectionsSchema];
 
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateSignInLogs(int count = 25) =>
+    // --- Data generation ---
+    // Row counts are tuned so that even with a 24h time window (default picker),
+    // filtered queries return meaningful results. Timestamps spread over 30 days.
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateSignInLogs(int count = 300) =>
         Generate(count, rng => new Dictionary<string, object?>
         {
             ["TimeGenerated"] = RandomTimestamp(rng),
@@ -134,71 +139,90 @@ public static class MockEventData
             ["IPAddress"] = RandomIp(rng),
             ["Location"] = Pick(rng, Locations),
             ["ClientAppUsed"] = Pick(rng, ClientApps),
-            ["ResultType"] = rng.NextDouble() < 0.85 ? 0 : Pick(rng, [50126, 50053, 53003]),
+            ["ResultType"] = rng.NextDouble() < 0.70 ? 0 : Pick(rng, [50126, 50053, 53003, 50125]),
         });
 
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateSecurityEvents(int count = 20) =>
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateSecurityEvents(int count = 250) =>
         Generate(count, rng => new Dictionary<string, object?>
         {
             ["TimeGenerated"] = RandomTimestamp(rng),
             ["Computer"] = Pick(rng, Computers),
-            ["EventID"] = Pick(rng, [4624, 4625, 4672, 4720, 4740]),
+            ["EventID"] = Pick(rng, [4624, 4624, 4625, 4634, 4672, 4720, 4740, 4688]),
             ["Activity"] = Pick(rng, Activities),
             ["Account"] = Pick(rng, Users),
-            ["LogonType"] = Pick(rng, [2, 3, 10]),
+            ["LogonType"] = Pick(rng, [2, 3, 3, 10]),
         });
 
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateAppRequests(int count = 30) =>
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateAppRequests(int count = 400) =>
         Generate(count, rng => new Dictionary<string, object?>
         {
             ["TimeGenerated"] = RandomTimestamp(rng),
             ["Name"] = Pick(rng, Endpoints),
-            ["ResultCode"] = rng.NextDouble() < 0.9 ? "200" : Pick(rng, ["500", "503", "429"]),
-            ["DurationMs"] = Math.Round(rng.NextDouble() * 800 + 20, 1),
-            ["Success"] = rng.NextDouble() < 0.9,
+            ["ResultCode"] = rng.NextDouble() < 0.82 ? "200" : Pick(rng, ["500", "503", "429", "401", "403"]),
+            ["DurationMs"] = Math.Round(rng.NextDouble() * 1200 + 15, 1),
+            ["Success"] = rng.NextDouble() < 0.82,
             ["ClientIP"] = RandomIp(rng),
         });
 
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateAuditEvents(int count = 24) =>
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateAuditEvents(int count = 200) =>
         Generate(count, rng => new Dictionary<string, object?>
         {
             ["TimeGenerated"] = RandomTimestamp(rng),
             ["UserPrincipalName"] = Pick(rng, Users),
-            ["Action"] = Pick(rng, ["Read", "Export", "Update", "Delete"]),
+            ["Action"] = Pick(rng, ["Read", "Read", "Export", "Update", "Delete"]),
             ["Resource"] = Pick(rng, Resources),
-            ["Outcome"] = rng.NextDouble() < 0.92 ? "Allowed" : "Denied",
+            ["Outcome"] = rng.NextDouble() < 0.85 ? "Allowed" : "Denied",
         });
 
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDatabaseQueries(int count = 28) =>
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDatabaseQueries(int count = 300) =>
         Generate(count, rng => new Dictionary<string, object?>
         {
             ["TimeGenerated"] = RandomTimestamp(rng),
             ["Database"] = Pick(rng, Databases),
-            ["QueryType"] = Pick(rng, ["Read", "Write"]),
-            ["DurationMs"] = Math.Round(rng.NextDouble() * 1200 + 5, 1),
-            ["Success"] = rng.NextDouble() < 0.96,
+            ["QueryType"] = Pick(rng, ["Read", "Read", "Write"]),
+            ["DurationMs"] = Math.Round(rng.NextDouble() * 2000 + 5, 1),
+            ["Success"] = rng.NextDouble() < 0.88,
         });
 
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateApiDependencies(int count = 26) =>
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateApiDependencies(int count = 350) =>
         Generate(count, rng => new Dictionary<string, object?>
         {
             ["TimeGenerated"] = RandomTimestamp(rng),
             ["Target"] = Pick(rng, DependencyTargets),
-            ["DependencyType"] = Pick(rng, ["HTTP", "Database", "Queue"]),
-            ["DurationMs"] = Math.Round(rng.NextDouble() * 500 + 2, 1),
-            ["Success"] = rng.NextDouble() < 0.94,
+            ["DependencyType"] = Pick(rng, ["HTTP", "HTTP", "Database", "Queue"]),
+            ["DurationMs"] = Math.Round(rng.NextDouble() * 800 + 2, 1),
+            ["Success"] = rng.NextDouble() < 0.90,
         });
 
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDeploymentEvents(int count = 24) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Environment"] = Pick(rng, ["dev", "staging", "production"]), ["Version"] = $"2026.08.{rng.Next(1, 30)}", ["Status"] = rng.NextDouble() < .9 ? "Succeeded" : "RolledBack" });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateServiceHealth(int count = 32) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Region"] = Pick(rng, Regions), ["LatencyMs"] = Math.Round(rng.NextDouble() * 300 + 5, 1), ["Healthy"] = rng.NextDouble() < .95 });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateQueueMessages(int count = 36) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["QueueName"] = Pick(rng, Queues), ["MessageType"] = Pick(rng, ["Created", "Updated", "Deleted", "Notification"]), ["ProcessingMs"] = Math.Round(rng.NextDouble() * 400 + 3, 1), ["DeadLettered"] = rng.NextDouble() < .04 });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateContainerLogs(int count = 40) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Level"] = Pick(rng, ["Info", "Info", "Warning", "Error"]), ["Message"] = Pick(rng, ["Request completed", "Retry scheduled", "Dependency timeout", "Configuration loaded"]), ["Region"] = Pick(rng, Regions) });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateFeatureFlags(int count = 28) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["FlagName"] = Pick(rng, ["new-search", "export-v2", "clinical-dashboard", "adaptive-auth"]), ["UserPrincipalName"] = Pick(rng, Users), ["Enabled"] = rng.Next(2) == 1, ["Variant"] = Pick(rng, ["control", "treatment-a", "treatment-b"]) });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateUserSessions(int count = 30) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["UserPrincipalName"] = Pick(rng, Users), ["SessionId"] = $"sess-{rng.Next(10000, 99999)}", ["DurationMin"] = Math.Round(rng.NextDouble() * 180 + 2, 1), ["Terminated"] = rng.NextDouble() < .9 });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDataExports(int count = 22) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["ExportName"] = Pick(rng, ["TrialSummary", "AccessReview", "UsageReport", "AuditExtract"]), ["RequestedBy"] = Pick(rng, Users), ["RowsExported"] = rng.Next(100, 50000), ["Status"] = rng.NextDouble() < .93 ? "Completed" : "Failed" });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateApiErrors(int count = 34) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Route"] = Pick(rng, Endpoints), ["StatusCode"] = Pick(rng, [400, 401, 404, 429, 500, 503]), ["ErrorType"] = Pick(rng, ["Validation", "Unauthorized", "NotFound", "Timeout", "Dependency"]), ["Service"] = Pick(rng, Services) });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateJobRuns(int count = 26) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["JobName"] = Pick(rng, JobNames), ["DurationMs"] = Math.Round(rng.NextDouble() * 3000 + 20, 1), ["Succeeded"] = rng.NextDouble() < .9, ["ItemsProcessed"] = rng.Next(10, 10000) });
-    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateNetworkConnections(int count = 30) => Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["SourceService"] = Pick(rng, Services), ["Destination"] = Pick(rng, DependencyTargets), ["Port"] = Pick(rng, [443, 443, 5432, 6379, 5672]), ["Allowed"] = rng.NextDouble() < .96 });
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDeploymentEvents(int count = 120) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Environment"] = Pick(rng, ["dev", "staging", "production", "production"]), ["Version"] = $"2026.08.{rng.Next(1, 30)}", ["Status"] = rng.NextDouble() < .82 ? "Succeeded" : "Failed" });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateServiceHealth(int count = 280) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Region"] = Pick(rng, Regions), ["LatencyMs"] = Math.Round(rng.NextDouble() * 400 + 5, 1), ["Healthy"] = rng.NextDouble() < .88 });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateQueueMessages(int count = 320) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["QueueName"] = Pick(rng, Queues), ["MessageType"] = Pick(rng, ["Created", "Updated", "Deleted", "Notification"]), ["ProcessingMs"] = Math.Round(rng.NextDouble() * 500 + 3, 1), ["DeadLettered"] = rng.NextDouble() < .10 });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateContainerLogs(int count = 350) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Service"] = Pick(rng, Services), ["Level"] = Pick(rng, ["Info", "Info", "Info", "Warning", "Warning", "Error"]), ["Message"] = Pick(rng, ["Request completed", "Retry scheduled", "Dependency timeout", "Configuration loaded", "Health check passed", "Connection refused", "Memory limit exceeded"]), ["Region"] = Pick(rng, Regions) });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateFeatureFlags(int count = 180) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["FlagName"] = Pick(rng, ["new-search", "export-v2", "clinical-dashboard", "adaptive-auth", "audit-trail-v2"]), ["UserPrincipalName"] = Pick(rng, Users), ["Enabled"] = rng.Next(2) == 1, ["Variant"] = Pick(rng, ["control", "treatment-a", "treatment-b", "treatment-c"]) });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateUserSessions(int count = 250) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["UserPrincipalName"] = Pick(rng, Users), ["SessionId"] = $"sess-{rng.Next(10000, 99999)}", ["DurationMin"] = Math.Round(rng.NextDouble() * 240 + 2, 1), ["Terminated"] = rng.NextDouble() < .85 });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateDataExports(int count = 150) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["ExportName"] = Pick(rng, ["TrialSummary", "AccessReview", "UsageReport", "AuditExtract", "ComplianceArchive"]), ["RequestedBy"] = Pick(rng, Users), ["RowsExported"] = rng.Next(100, 80000), ["Status"] = rng.NextDouble() < .85 ? "Completed" : "Failed" });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateApiErrors(int count = 280) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["Route"] = Pick(rng, Endpoints), ["StatusCode"] = Pick(rng, [400, 401, 403, 404, 429, 500, 503]), ["ErrorType"] = Pick(rng, ["Validation", "Unauthorized", "NotFound", "Timeout", "Dependency", "RateLimit"]), ["Service"] = Pick(rng, Services) });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateJobRuns(int count = 200) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["JobName"] = Pick(rng, JobNames), ["DurationMs"] = Math.Round(rng.NextDouble() * 5000 + 20, 1), ["Succeeded"] = rng.NextDouble() < .85, ["ItemsProcessed"] = rng.Next(10, 50000) });
+
+    public static IReadOnlyList<IReadOnlyDictionary<string, object?>> GenerateNetworkConnections(int count = 300) =>
+        Generate(count, rng => new() { ["TimeGenerated"] = RandomTimestamp(rng), ["SourceService"] = Pick(rng, Services), ["Destination"] = Pick(rng, DependencyTargets), ["Port"] = Pick(rng, [443, 443, 443, 5432, 6379, 5672, 8080]), ["Allowed"] = rng.NextDouble() < .90 });
 
     private static List<IReadOnlyDictionary<string, object?>> Generate(
         int count, Func<Random, Dictionary<string, object?>> makeRow)
@@ -209,6 +233,7 @@ public static class MockEventData
         return Enumerable.Range(0, count).Select(_ => (IReadOnlyDictionary<string, object?>)makeRow(rng)).ToList();
     }
 
+    // Spread timestamps over 30 days so 24h/7d/30d time windows all return meaningful data.
     private static DateTimeOffset RandomTimestamp(Random rng) =>
         DateTimeOffset.UtcNow.AddHours(-rng.NextDouble() * 7 * 24);
 

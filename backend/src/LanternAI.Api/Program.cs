@@ -5,6 +5,7 @@ using LanternAI.Api.Services.Catalog;
 using LanternAI.Api.Services.Execution;
 using LanternAI.Api.Services.Llm;
 using LanternAI.Api.Services.QueryPlanning;
+using LanternAI.Api.Services.Analysis;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -17,6 +18,7 @@ builder.Services.AddOptions<OllamaOptions>()
     .Validate(options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https", "Ollama:BaseUrl must be an absolute HTTP(S) URL.")
     .Validate(options => !string.IsNullOrWhiteSpace(options.Model), "Ollama:Model is required.")
     .Validate(options => options.TimeoutSeconds is >= 1 and <= 300, "Ollama:TimeoutSeconds must be between 1 and 300.")
+    .Validate(options => options.HealthTimeoutSeconds is >= 1 and <= 60, "Ollama:HealthTimeoutSeconds must be between 1 and 60.")
     .ValidateOnStart();
 builder.Services.AddOptions<SecurityOptions>()
     .Bind(builder.Configuration.GetSection(SecurityOptions.SectionName))
@@ -48,6 +50,7 @@ builder.Services.AddSingleton<QueryCostEstimator>();
 builder.Services.AddSingleton<IDataSourceCapabilitiesProvider, SimulatedDataSourceCapabilitiesProvider>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAuditStore, InMemoryAuditStore>();
+builder.Services.AddSingleton<IncidentSummaryService>();
 builder.Services.AddHealthChecks().AddCheck<OllamaHealthCheck>("ollama", tags: ["ready"]);
 
 // Ollama is the Phase 1 LLM provider. To switch to Gemini once implemented,
@@ -57,7 +60,25 @@ builder.Services.AddHttpClient<ILlmProvider, OllamaLlmProvider>((sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
     client.BaseAddress = new Uri(options.BaseUrl);
+    if (!string.IsNullOrWhiteSpace(options.ApiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
+    }
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
+
+// Named HttpClient for the health check — shares BaseAddress and auth header
+// with the typed LLM client but uses a shorter timeout (HealthTimeoutSeconds).
+// This avoids duplicating config logic in OllamaHealthCheck itself.
+builder.Services.AddHttpClient("ollama-health", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    if (!string.IsNullOrWhiteSpace(options.ApiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
+    }
+    client.Timeout = TimeSpan.FromSeconds(options.HealthTimeoutSeconds);
 });
 
 // --- Error handling --------------------------------------------------------
@@ -102,6 +123,13 @@ builder.Services.AddRateLimiter(options =>
         context.HttpContext.Response.Headers.RetryAfter = "60";
         await ValueTask.CompletedTask;
     };
+});
+
+// String enums in JSON (FilterOperator, AggregationFunction) so the frontend can send/receive
+// enum values as readable strings like "NotEquals" instead of numeric codes.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -172,6 +200,7 @@ app.UseRateLimiter();
 app.MapTablesEndpoints(securityOptions.Enabled);
 app.MapQueryEndpoints(securityOptions.Enabled);
 app.MapCapabilitiesEndpoints();
+app.MapAnalysisEndpoints();
 app.MapAuditEndpoints(securityOptions.Enabled);
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {

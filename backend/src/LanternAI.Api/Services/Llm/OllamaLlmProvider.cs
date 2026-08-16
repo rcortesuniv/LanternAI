@@ -5,9 +5,9 @@ using Microsoft.Extensions.Options;
 namespace LanternAI.Api.Services.Llm;
 
 /// <summary>
-/// Calls a local Ollama instance's chat API. Registered as a typed HTTP
-/// client (see Program.cs) so <see cref="HttpClient.BaseAddress"/> and the
-/// timeout come from <see cref="OllamaOptions"/>.
+/// Calls an Ollama instance's chat API (local or cloud). Registered as a
+/// typed HTTP client (see Program.cs) so <see cref="HttpClient.BaseAddress"/>
+/// and the timeout come from <see cref="OllamaOptions"/>.
 /// </summary>
 public sealed class OllamaLlmProvider(HttpClient httpClient, IOptions<OllamaOptions> options, ILogger<OllamaLlmProvider> logger)
     : ILlmProvider
@@ -29,13 +29,24 @@ public sealed class OllamaLlmProvider(HttpClient httpClient, IOptions<OllamaOpti
         catch (HttpRequestException ex)
         {
             logger.LogError(ex, "Failed to reach Ollama at {BaseAddress}", httpClient.BaseAddress);
-            throw new LlmUnavailableException("Could not reach the local Ollama server. Is it running?", ex);
+            throw new LlmUnavailableException("Could not reach the Ollama server. Is it running?", ex);
         }
 
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             logger.LogError("Ollama returned {StatusCode}: {Body}", response.StatusCode, body);
+
+            // Auth-specific errors: help the user distinguish a bad/expired key
+            // from a connectivity problem so they can fix the right thing.
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized
+                or System.Net.HttpStatusCode.Forbidden)
+            {
+                throw new LlmUnavailableException(
+                    "Ollama rejected the API key (HTTP " + (int)response.StatusCode +
+                    "). Check that Ollama__ApiKey is set to a valid, non-expired token.");
+            }
+
             throw new LlmUnavailableException($"Ollama request failed with status {(int)response.StatusCode}.");
         }
 
